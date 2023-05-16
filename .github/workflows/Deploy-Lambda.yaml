@@ -36,7 +36,8 @@ jobs:
         run: |
           (aws ecr describe-repositories --repository-names ${ECR_REPOSITORY} \
             && docker pull ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest) \
-          || aws ecr create-repository --repository-name ${ECR_REPOSITORY}
+          || aws ecr create-repository --repository-name ${ECR_REPOSITORY} \
+          || true
 
       - name: Build and tag image
         env:
