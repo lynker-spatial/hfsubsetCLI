@@ -20,7 +20,8 @@ RUN apt update \
     && apt install -y -V ${HF_BUILD_PKGS} ${HF_ARROW_PKGS}
 
 # Setup hydrofabric location
-RUN mkdir -p /hydrofabric
+RUN git clone https://github.com/NOAA-OWP/hydrofabric.git /hydrofabric \
+    && mkdir -p /hydrofabric/subset
 
 # Install CRAN Packages
 ENV HF_CRAN_PKGS="cli arrow crayon dplyr DBI RSQLite sf terra lambdr glue rstudioapi purrr magrittr"
@@ -34,9 +35,6 @@ RUN cd /hydrofabric \
 ENV HF_GH_PKGS="mikejohnson51/hydrofab mikejohnson51/ngen.hydrofab mikejohnson51/zonal mikejohnson51/climateR DOI-USGS/nhdplusTools"
 RUN cd /hydrofabric \
     && installGithub.r ${HF_GH_PKGS}
-
-RUN git clone https://github.com/NOAA-OWP/hydrofabric.git /hydrofabric \
-    && mkdir -p /hydrofabric/subset
 
 COPY . /hydrofabric/subset
 
