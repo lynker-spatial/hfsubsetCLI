@@ -178,7 +178,7 @@ func main() {
 		endpoint = v
 	} else {
 		// TODO: Change to AWS endpoint
-		endpoint = "http://localhost:9000"
+		endpoint = "https://hfsubset-e9kvx.ondigitalocean.app/"
 	}
 
 	resp := makeRequest(endpoint, opts, bar)
