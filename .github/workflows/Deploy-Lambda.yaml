@@ -79,7 +79,7 @@ jobs:
 
             aws lambda create-function \
               --function-name ${LAMBDA_FUNCTION} \
-              --role "arn:aws:iam:${AWS_ACCOUNT_ID}:role/${LAMBDA_FUNCTION}-role"
+              --role "arn:aws:iam:${AWS_ACCOUNT_ID}:role/${LAMBDA_FUNCTION}-role" \
               --memory-size 3008 \
               --code "ImageUri=${ECR_REGISTRY}/${ECR_REPOSTIORY}:${IMAGE_TAG}" \
               --ephemeral-storage 2048
