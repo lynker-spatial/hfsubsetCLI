@@ -3,6 +3,7 @@ on:
     paths:
       - runtime.R
       - Dockerfile
+      - .github/workflows/Deploy-Lambda.yaml
 
 name: Build and Deploy Lambda
 
@@ -33,6 +34,7 @@ jobs:
       - name: Verify ECR Repository
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        continue-on-error: true
         run: |
           (aws ecr describe-repositories --repository-names ${ECR_REPOSITORY} \
             && docker pull ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest) \
