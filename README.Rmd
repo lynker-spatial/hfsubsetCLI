@@ -1,17 +1,25 @@
+---
+output: github_document
+---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
 
 # Hydrofabric Subsetter
 
 ## CLI Option
 
-For those interested in using the NOAA NextGen fabric as is, we have
-provided a Go-based CLI
-[here](https://github.com/LynkerIntel/hfsubset/releases)
+For those interested in using the NOAA NextGen fabric as is, we have provided a Go-based CLI [here](https://github.com/LynkerIntel/hfsubset/releases)
 
 This utility has the following syntax:
 
-``` bash
+```{bash, eval = FALSE}
 hfsubset - Hydrofabric Subsetter
 
 Usage:
@@ -35,16 +43,13 @@ Options:
 
 ## NextGen Needs GeoJSON
 
-While GPKG support is the end goal for NextGen, it current requires
-GeoJSON and CSV inputs.
+While GPKG support is the end goal for NextGen, it current requires GeoJSON and CSV inputs.
 
-Fortunately, `ogr2ogr` provides easy ways to extract these sub
-layer/formats from the GPKG file.
+Fortunately, `ogr2ogr` provides easy ways to extract these sub layer/formats from the GPKG file.
 
-Here is a full-stop example of extracting a subset for a hydrolocation,
-using the CLI, and generating the needed files for NextGen
+Here is a full-stop example of extracting a subset for a hydrolocation, using the CLI, and generating the needed files for NextGen
 
-``` bash
+```{bash, eval = FALSE}
 mkdir poudre
 cd poudre
 
