@@ -2,6 +2,8 @@ on:
   push:
     paths:
       - cli/**.go
+      - '.github/workflows/Generate-subset-app.yaml'
+  workflow_dispatch:
 
 name: Build and Upload hfsubset Executables
 
