@@ -23,21 +23,21 @@ jobs:
       - name: Package MacOS executable
         working-directory: ./cli
         run: |
-          GOOS=darwin GOARCH=amd64 go build
+          GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build
           tar -czvf hfsubset-macos_amd64.tar.gz hfsubset
           rm hfsubset
 
       - name: Package Linux executable
         working-directory: ./cli
         run: |
-          GOOS=linux GOARCH=amd64 go build
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build
           tar -czvf hfsubset-linux_amd64.tar.gz hfsubset
           rm hfsubset
   
       - name: Package Windows executable
         working-directory: ./cli
         run: |
-          GOOS=windows GOARCH=amd64 go build
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build
           zip hfsubset-windows_amd64.zip hfsubset.exe
           rm hfsubset.exe
 
