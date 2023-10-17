@@ -69,13 +69,19 @@ func (opts *SubsetRequest) MarshalJSON() ([]byte, error) {
 		key = "id"
 		break
 	case "hl":
-		key = "hl_id"
+		key = "hl_uri"
 		break
 	case "comid":
 		key = "comid"
 		break
+	case "nldi":
+		key = "nldi"
+		break
+	case "xy":
+		key = "loc"
+		break
 	default:
-		panic("type " + *opts.id_type + " not supported; only one of: hf, hl, comid")
+		panic("type " + *opts.id_type + " not supported; only one of: hf, hl, comid, nldi, xy")
 	}
 
 	jsonmap["layers"] = opts.Layers()
@@ -114,9 +120,11 @@ func makeRequest(lambda_endpoint string, opts *SubsetRequest, bar *progressbar.P
 		r = r[1 : len(r)-1]
 	}
 
-	bar.Describe("[3/4] decoding base64")
+	bar.Describe("[3/4] decoding gzip")
 	rr := bytes.NewReader(r)
 	gpkg := base64.NewDecoder(base64.StdEncoding, rr)
+	// gpkg, _ := gzip.NewReader(rr)
+	// defer gpkg.Close()
 	resp.data, err = io.ReadAll(gpkg)
 	if err != nil {
 		panic(err)
@@ -170,7 +178,7 @@ func main() {
 		progressbar.OptionSetWidth(15),
 		progressbar.OptionSetDescription("[0/4] sending http request"),
 		progressbar.OptionShowBytes(false),
-		progressbar.OptionSetVisibility(*quiet),
+		progressbar.OptionSetVisibility(!*quiet),
 	)
 
 	var endpoint string
