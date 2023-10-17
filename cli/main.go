@@ -75,11 +75,13 @@ func (opts *SubsetRequest) MarshalJSON() ([]byte, error) {
 		key = "comid"
 		break
 	case "nldi":
-		key = "nldi"
-		break
+		// key = "nldi"
+		// break
+		fallthrough
 	case "xy":
-		key = "loc"
-		break
+		// key = "loc"
+		// break
+		panic("-nldi and -xy support are not implemented currently")
 	default:
 		panic("type " + *opts.id_type + " not supported; only one of: hf, hl, comid, nldi, xy")
 	}
