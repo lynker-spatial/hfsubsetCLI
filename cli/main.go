@@ -158,9 +158,15 @@ func main() {
 		flag.PrintDefaults()
 	}
 
+	layers_help := `Comma-delimited list of layers to subset.
+Either "all" or one or more of:
+    "divides", "nexus", "flowpaths", "flowpath_attributes",
+    "network", "hydrolocations", "lakes", "reference_flowline",
+    "reference_catchment", "reference_flowpaths", "reference_divides"`
+
 	opts := new(SubsetRequest)
-	opts.id_type = flag.String("t", "hf", "One of: \"hf\", \"hl\", or \"comid\"")
-	opts.layers = flag.String("l", "all", "Comma-delimited list of layers to subset.\nEither \"all\" or one or more of:\n    \"divides\", \"nexus\", \"flowpaths\",\n    \"network\", \"hydrolocations\"")
+	opts.id_type = flag.String("t", "hf", `One of: "hf", "hl", "comid", "loc", or "nldi"`)
+	opts.layers = flag.String("l", "all", layers_help)
 	opts.version = flag.String("r", "pre-release", "Hydrofabric version")
 	opts.output = flag.String("o", "hydrofabric.gpkg", "Output file name")
 	quiet := flag.Bool("quiet", false, "Disable progress bar")
