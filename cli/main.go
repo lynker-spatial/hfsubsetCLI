@@ -166,7 +166,7 @@ Either "all" or "core", or one or more of:
 
 	opts := new(SubsetRequest)
 	opts.id_type = flag.String("t", "hf", `One of: "hf", "hl", "comid", "loc", or "nldi"`)
-	opts.layers = flag.String("l", "all", layers_help)
+	opts.layers = flag.String("l", "core", layers_help)
 	opts.version = flag.String("r", "pre-release", "Hydrofabric version")
 	opts.output = flag.String("o", "hydrofabric.gpkg", "Output file name")
 	quiet := flag.Bool("quiet", false, "Disable progress bar")

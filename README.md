@@ -33,7 +33,7 @@ Options:
         Either "all" or "core", or one or more of:
             "divides", "nexus", "flowpaths", "flowpath_attributes",
             "network", "hydrolocations", "lakes", "reference_flowline",
-            "reference_catchment", "reference_flowpaths", "reference_divides" (default "all")
+            "reference_catchment", "reference_flowpaths", "reference_divides" (default "core")
   -o string
         Output file name (default "hydrofabric.gpkg")
   -quiet
