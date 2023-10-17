@@ -18,19 +18,30 @@ Usage:
   hfsubset [OPTIONS] identifiers...
   hfsubset (-h | --help)
 
-Example:
-  hfsubset -l divides -o ./poudre-divides.gpkg -r "pre-release" -t hl "Gages-06752260"
-  hfsubset -o ./poudre-all.gpkg -t hl "Gages-06752260"
+Examples:
+  hfsubset -l divides,nexus        \
+           -o ./divides_nexus.gpkg \
+           -r "pre-release"        \
+           -t hl                   \
+           "Gages-06752260"
+
+  hfsubset -o ./poudre.gpkg -t hl "Gages-06752260"
 
 Options:
   -l string
-        Layers to subset (default "divides,nexus,flowpaths,network,hydrolocations")
+        Comma-delimited list of layers to subset.
+        Either "all" or one or more of:
+            "divides", "nexus", "flowpaths", "flowpath_attributes",
+            "network", "hydrolocations", "lakes", "reference_flowline",
+            "reference_catchment", "reference_flowpaths", "reference_divides" (default "all")
   -o string
         Output file name (default "hydrofabric.gpkg")
+  -quiet
+        Disable progress bar
   -r string
         Hydrofabric version (default "pre-release")
   -t string
-        One of: hf, hl, or comid (default "hf")
+        One of: "hf", "hl", "comid", "loc", or "nldi" (default "hf")
 ```
 
 ## NextGen Needs GeoJSON
