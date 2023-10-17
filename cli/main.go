@@ -159,7 +159,7 @@ func main() {
 	}
 
 	layers_help := `Comma-delimited list of layers to subset.
-Either "all" or one or more of:
+Either "all" or "core", or one or more of:
     "divides", "nexus", "flowpaths", "flowpath_attributes",
     "network", "hydrolocations", "lakes", "reference_flowline",
     "reference_catchment", "reference_flowpaths", "reference_divides"`
@@ -179,6 +179,10 @@ Either "all" or one or more of:
 	}
 
 	if *opts.layers == "all" {
+		*opts.layers = "divides,nexus,flowpaths,network,hydrolocations,lakes,reference_flowline,reference_catchment,reference_flowpaths,reference_divides"
+	}
+
+	if *opts.layers == "core" {
 		*opts.layers = "divides,nexus,flowpaths,network,hydrolocations"
 	}
 
