@@ -1,3 +1,21 @@
+// This file is part of hfsubset.
+//
+// Copyright 2023 Mike Johnson, Justin Singh-Mohudpur
+//
+// hfsubset is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published
+// by the Free Software Foundation, either version 3 of the License,
+// or (at your option) any later version.
+//
+// hfsubset is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty
+// of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with hfsubset. If not, see <LICENSE.md> or
+// <https://www.gnu.org/licenses/>.
+
 package main
 
 import (
@@ -69,13 +87,21 @@ func (opts *SubsetRequest) MarshalJSON() ([]byte, error) {
 		key = "id"
 		break
 	case "hl":
-		key = "hl_id"
+		key = "hl_uri"
 		break
 	case "comid":
 		key = "comid"
 		break
+	case "nldi":
+		// key = "nldi"
+		// break
+		fallthrough
+	case "xy":
+		// key = "loc"
+		// break
+		panic("-nldi and -xy support are not implemented currently")
 	default:
-		panic("type " + *opts.id_type + " not supported; only one of: hf, hl, comid")
+		panic("type " + *opts.id_type + " not supported; only one of: hf, hl, comid, nldi, xy")
 	}
 
 	jsonmap["layers"] = opts.Layers()
@@ -114,9 +140,11 @@ func makeRequest(lambda_endpoint string, opts *SubsetRequest, bar *progressbar.P
 		r = r[1 : len(r)-1]
 	}
 
-	bar.Describe("[3/4] decoding base64")
+	bar.Describe("[3/4] decoding gzip")
 	rr := bytes.NewReader(r)
 	gpkg := base64.NewDecoder(base64.StdEncoding, rr)
+	// gpkg, _ := gzip.NewReader(rr)
+	// defer gpkg.Close()
 	resp.data, err = io.ReadAll(gpkg)
 	if err != nil {
 		panic(err)
@@ -148,9 +176,15 @@ func main() {
 		flag.PrintDefaults()
 	}
 
+	layers_help := `Comma-delimited list of layers to subset.
+Either "all" or "core", or one or more of:
+    "divides", "nexus", "flowpaths", "flowpath_attributes",
+    "network", "hydrolocations", "lakes", "reference_flowline",
+    "reference_catchment", "reference_flowpaths", "reference_divides"`
+
 	opts := new(SubsetRequest)
-	opts.id_type = flag.String("t", "hf", "One of: \"hf\", \"hl\", or \"comid\"")
-	opts.layers = flag.String("l", "all", "Comma-delimited list of layers to subset.\nEither \"all\" or one or more of:\n    \"divides\", \"nexus\", \"flowpaths\",\n    \"network\", \"hydrolocations\"")
+	opts.id_type = flag.String("t", "hf", `One of: "hf", "hl", "comid", "loc", or "nldi"`)
+	opts.layers = flag.String("l", "core", layers_help)
 	opts.version = flag.String("r", "pre-release", "Hydrofabric version")
 	opts.output = flag.String("o", "hydrofabric.gpkg", "Output file name")
 	quiet := flag.Bool("quiet", false, "Disable progress bar")
@@ -163,6 +197,10 @@ func main() {
 	}
 
 	if *opts.layers == "all" {
+		*opts.layers = "divides,nexus,flowpaths,network,hydrolocations,lakes,reference_flowline,reference_catchment,reference_flowpaths,reference_divides"
+	}
+
+	if *opts.layers == "core" {
 		*opts.layers = "divides,nexus,flowpaths,network,hydrolocations"
 	}
 
@@ -170,7 +208,7 @@ func main() {
 		progressbar.OptionSetWidth(15),
 		progressbar.OptionSetDescription("[0/4] sending http request"),
 		progressbar.OptionShowBytes(false),
-		progressbar.OptionSetVisibility(*quiet),
+		progressbar.OptionSetVisibility(!*quiet),
 	)
 
 	var endpoint string
