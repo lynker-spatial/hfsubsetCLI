@@ -41,7 +41,7 @@ Options:
   -r string
         Hydrofabric version (default "pre-release")
   -t string
-        One of: "hf", "hl", "comid", "loc", or "nldi" (default "hf")
+        One of: "id", "hl_uri", "comid", "xy", or "nldi" (default "hf")
 ```
 
 ## NextGen Needs GeoJSON
@@ -59,15 +59,16 @@ using the CLI, and generating the needed files for NextGen
 mkdir poudre
 cd poudre
 
-hfsubset -l divides,nexus,flowpath_attributes -o ./poudre-subset.gpkg -r "pre-release" -t hl "Gages-06752260"
+hfsubset -l core -o ./poudre-subset.gpkg -r "pre-release" -t hl_uri "Gages-06752260"
 
-ogr2ogr -f GeoJSON catchments.geojson poudre-subset.gpkg -nln divides  
-ogr2ogr -f GeoJSON nexus.geojson poudre-subset.gpkg -nln nexus
-ogr2ogr -f CSV flowpath_attributes.csv poudre-subset.gpkg -nln flowpath_attributes
+ogr2ogr -f GeoJSON catchments.geojson poudre-subset.gpkg divides  
+ogr2ogr -f GeoJSON nexus.geojson poudre-subset.gpkg nexus
+ogr2ogr -f CSV flowpath_attributes.csv poudre-subset.gpkg flowpath_attributes
 
 ls poudre
 ```
 
 ## License
 
-`hfsubset` is distributed under [GNU General Public License v3.0 or later](LICENSE.md)
+`hfsubset` is distributed under [GNU General Public License v3.0 or
+later](LICENSE.md)
