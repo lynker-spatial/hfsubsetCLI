@@ -43,10 +43,10 @@ Examples:
   hfsubset -l divides,nexus        \
            -o ./divides_nexus.gpkg \
            -r "pre-release"        \
-           -t hl                   \
+           -t hl_uri                   \
            "Gages-06752260"
 
-  hfsubset -o ./poudre.gpkg -t hl "Gages-06752260"
+  hfsubset -o ./poudre.gpkg -t hl_uri "Gages-06752260"
 
 Options:
 `
@@ -99,9 +99,9 @@ func (opts *SubsetRequest) MarshalJSON() ([]byte, error) {
 	case "xy":
 		// key = "loc"
 		// break
-		panic("-nldi and -xy support are not implemented currently")
+		panic("-nldi_feature and -xy support are not implemented currently")
 	default:
-		panic("type " + *opts.id_type + " not supported; only one of: hf, hl, comid, nldi, xy")
+		panic("type " + *opts.id_type + " not supported; only one of: id, hl_uri, comid, nldi_feature, xy")
 	}
 
 	jsonmap["layers"] = opts.Layers()
@@ -183,7 +183,7 @@ Either "all" or "core", or one or more of:
     "reference_catchment", "reference_flowpaths", "reference_divides"`
 
 	opts := new(SubsetRequest)
-	opts.id_type = flag.String("t", "hf", `One of: "hf", "hl", "comid", "loc", or "nldi"`)
+	opts.id_type = flag.String("t", "id", `One of: "id", "hl_uri", "comid", "xy", or "nldi_feature"`)
 	opts.layers = flag.String("l", "core", layers_help)
 	opts.version = flag.String("r", "pre-release", "Hydrofabric version")
 	opts.output = flag.String("o", "hydrofabric.gpkg", "Output file name")
