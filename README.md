@@ -67,3 +67,7 @@ ogr2ogr -f CSV flowpath_attributes.csv poudre-subset.gpkg -nln flowpath_attribut
 
 ls poudre
 ```
+
+## License
+
+`hfsubset` is distributed under [GNU General Public License v3.0 or later](LICENSE.md)
