@@ -83,16 +83,16 @@ func (opts *SubsetRequest) MarshalJSON() ([]byte, error) {
 	jsonmap := make(map[string]any)
 
 	switch *opts.id_type {
-	case "hf":
+	case "id":
 		key = "id"
 		break
-	case "hl":
+	case "hl_uri":
 		key = "hl_uri"
 		break
 	case "comid":
 		key = "comid"
 		break
-	case "nldi":
+	case "nldi_feature":
 		// key = "nldi"
 		// break
 		fallthrough
