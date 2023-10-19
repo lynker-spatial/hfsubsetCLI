@@ -23,16 +23,30 @@ cache_dir <- tempdir()
 na_if_null <- function(x) if (is.null(x)) "NULL" else x
 
 subset <- function(
-    id      = NULL,
-    comid   = NULL,
-    hl_uri  = NULL,
-    nldi    = NULL,
-    loc     = NULL,
-    layers  = c("divides", "nexus", "flowpaths", "network", "hydrolocations"),
-    version = c("v1.0", "v1.1", "v1.2", "v20")
+    id           = NULL,
+    comid        = NULL,
+    hl_uri       = NULL,
+    nldi_feature = NULL,
+    xy           = NULL,
+    layers = c("divides", "nexus", "flowpaths", "network", "hydrolocations"),
+    version = c("pre-release", "v1.0", "v1.1", "v1.2")
 ) {
     version <- match.arg(version)
     s3_uri  <- paste0("s3://lynker-spatial/", version, "/")
+
+    missing_all <- is.null(id)     &&
+                   is.null(comid)  &&
+                   is.null(hl_uri) &&
+                   is.null(nldi_feature)   &&
+                   is.null(xy)
+
+    if (missing_all) {
+        return(list(
+            "response" = "Error",
+            "status"   = 400,
+            "message"  = "No ID parameters were given."
+        ))
+    }
 
     logger::log_info(glue::glue(
         "[subset] Received request:",
@@ -41,8 +55,8 @@ subset <- function(
         "  id: {na_if_null(id)}, ",
         "  comid: {na_if_null(comid)}, ",
         "  hl_uri: {na_if_null(hl_uri)}, ",
-        "  nldi: {na_if_null(nldi)}, ",
-        "  loc: {na_if_null(loc)}, ",
+        "  nldi_feature: {na_if_null(nldi_feature)}, ",
+        "  xy: {na_if_null(xy)}, ",
         "  layers: {layers}, ",
         "  version: {version}",
         "}}",
@@ -56,8 +70,8 @@ subset <- function(
         id           = id,
         comid        = comid,
         hl_uri       = hl_uri,
-        nldi_feature = nldi,
-        loc          = loc,
+        nldi_feature = nldi_feature,
+        xy           = xy,
         base_s3      = s3_uri,
         lyrs         = layers,
         outfile      = hf_tmp,
@@ -69,5 +83,5 @@ subset <- function(
 }
 
 lambdr::start_lambda(config = lambdr::lambda_config(
-    environ    = parent.frame()
+    environ = parent.frame()
 ))
