@@ -1,0 +1,3 @@
+[submodule "hydrofabric"]
+	path = hydrofabric
+	url = https://github.com/NOAA-OWP/hydrofabric.git
