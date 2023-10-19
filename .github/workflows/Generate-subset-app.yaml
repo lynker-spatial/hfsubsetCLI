@@ -1,5 +1,7 @@
 on:
   push:
+    branches:
+      - main
     paths:
       - cli/**.go
       - '.github/workflows/Generate-subset-app.yaml'
