@@ -29,7 +29,7 @@ subset <- function(
     nldi_feature = NULL,
     xy           = NULL,
     layers = c("divides", "nexus", "flowpaths", "network", "hydrolocations"),
-    version = c("pre-release", "v1.0", "v1.1", "v1.2")
+    version = c("pre-release", "v20", "v1.0", "v1.1", "v1.2")
 ) {
     version <- match.arg(version)
     s3_uri  <- paste0("s3://lynker-spatial/", version, "/")
@@ -57,7 +57,7 @@ subset <- function(
         "  hl_uri: {na_if_null(hl_uri)}, ",
         "  nldi_feature: {na_if_null(nldi_feature)}, ",
         "  xy: {na_if_null(xy)}, ",
-        "  layers: {layers}, ",
+        "  layers: {paste0(layers, collapse = ',')}, ",
         "  version: {version}",
         "}}",
         .sep = "\n"
