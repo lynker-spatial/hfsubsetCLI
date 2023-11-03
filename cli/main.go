@@ -42,7 +42,7 @@ Usage:
 Examples:
   hfsubset -l divides,nexus        \
            -o ./divides_nexus.gpkg \
-           -r "pre-release"        \
+           -r "v2.0"        \
            -t hl_uri                   \
            "Gages-06752260"
 
@@ -106,7 +106,7 @@ func (opts *SubsetRequest) MarshalJSON() ([]byte, error) {
 
 	jsonmap["layers"] = opts.Layers()
 	jsonmap[key] = opts.IDs()
-	jsonmap["version"] = "pre-release"
+	jsonmap["version"] = "v20" // v20 is v2.0
 	return json.Marshal(jsonmap)
 }
 
