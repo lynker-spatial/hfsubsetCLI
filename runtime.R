@@ -29,7 +29,7 @@ subset <- function(
     nldi    = NULL,
     loc     = NULL,
     layers  = c("divides", "nexus", "flowpaths", "network", "hydrolocations"),
-    version = c("pre-release", "v1.0", "v1.1", "v1.2")
+    version = c("v1.0", "v1.1", "v1.2", "v20")
 ) {
     version <- match.arg(version)
     s3_uri  <- paste0("s3://lynker-spatial/", version, "/")
