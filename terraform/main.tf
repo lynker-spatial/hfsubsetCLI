@@ -8,17 +8,17 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-west-1"
+  region = "us-west-2"
 }
 
-data "aws_vpc" "default_vpc" {
-  default = true
-}
-
-data "aws_subnets" "default_subnets" {
+data "aws_subnets" "lynker_spatial_service_subnets" {
   filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default_vpc.id]
+    name = "vpc-id"
+    values = [
+      aws_subnet.lynker_spatial_public_subnet_a.cidr_block,
+      aws_subnet.lynker_spatial_public_subnet_b.cidr_block,
+      aws_subnet.lynker_spatial_public_subnet_c.cidr_block
+    ]
   }
 }
 
@@ -83,9 +83,49 @@ data "aws_iam_policy_document" "hfsubset_ecs_exec_policy_document" {
 
 # Resources ===================================================================
 
+//! Lynker-Spatial VPC
+resource "aws_vpc" "lynker_spatial_vpc" {
+  cidr_block                           = "172.25.0.0/16"
+  enable_network_address_usage_metrics = true
+}
+
+resource "aws_subnet" "lynker_spatial_public_subnet_a" {
+  vpc_id            = aws_vpc.lynker_spatial_vpc.id
+  cidr_block        = "172.25.1.0/24"
+  availability_zone = "us-west-2a"
+
+  tags = {
+    Name = "Lynker Spatial Public Subnet A"
+  }
+}
+
+resource "aws_subnet" "lynker_spatial_public_subnet_b" {
+  vpc_id            = aws_vpc.lynker_spatial_vpc.id
+  cidr_block        = "172.25.2.0/24"
+  availability_zone = "us-west-2b"
+
+  tags = {
+    Name = "Lynker Spatial Public Subnet B"
+  }
+}
+
+resource "aws_subnet" "lynker_spatial_public_subnet_c" {
+  vpc_id            = aws_vpc.lynker_spatial_vpc.id
+  cidr_block        = "172.25.3.0/24"
+  availability_zone = "us-west-2c"
+
+  tags = {
+    Name = "Lynker Spatial Public Subnet C"
+  }
+}
+
 //! ECR Repository
 resource "aws_ecr_repository" "hfsubset_ecr" {
-  name = "hydrofabric-hfsubset"
+  name                 = "hydrofabric-hfsubset"
+  image_tag_mutability = "IMMUTABLE"
+  image_scanning_configuration {
+    scan_on_push = true
+  }
 }
 
 //! ECS Cluster
@@ -116,9 +156,11 @@ resource "aws_iam_role" "hfsubset_s3_access_role" {
 
 //! Application Load Balancer Security Group
 resource "aws_security_group" "hfsubset_alb_sg" {
-  name = "hydrofabric-hfsubset-alb-security-group"
+  name        = "hydrofabric-hfsubset-alb-security-group"
+  description = "Security group for hfsubset ALB; allows TCP/80 access bidirectionally anywhere."
 
   ingress {
+    description = "TCP/80 incoming from anywhere"
     protocol    = "tcp"
     from_port   = 80
     to_port     = 80
@@ -126,9 +168,10 @@ resource "aws_security_group" "hfsubset_alb_sg" {
   }
 
   egress {
-    protocol    = "-1"
-    from_port   = 0
-    to_port     = 0
+    description = "TCP/80 outgoing to anywhere"
+    protocol    = "tcp"
+    from_port   = 80
+    to_port     = 80
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
@@ -136,9 +179,12 @@ resource "aws_security_group" "hfsubset_alb_sg" {
 //! ECS Task Security Group
 resource "aws_security_group" "hfsubset_ecs_task_sg" {
   name   = "hydrofabric-hfsubset-ecs-task-security-group"
-  vpc_id = data.aws_vpc.default_vpc.id
+  vpc_id = aws_vpc.lynker_spatial_vpc.id
+
+  description = "Security group for hfsubset ECS Task; allows TCP/8080 to hfsubset ALB only."
 
   ingress {
+    description     = "TCP/8080 incoming from hfsubset ALB"
     protocol        = "tcp"
     from_port       = 8080
     to_port         = 8080
@@ -146,10 +192,11 @@ resource "aws_security_group" "hfsubset_ecs_task_sg" {
   }
 
   egress {
-    protocol    = "-1"
-    from_port   = 0
-    to_port     = 0
-    cidr_blocks = ["0.0.0.0/0"]
+    description     = "TCP/8080 outgoing to hfsubset ALB"
+    protocol        = "tcp"
+    from_port       = 8080
+    to_port         = 8080
+    security_groups = [aws_security_group.hfsubset_alb_sg.id]
   }
 }
 
@@ -159,8 +206,9 @@ resource "aws_lb" "hfsubset_alb" {
   internal                   = false
   load_balancer_type         = "application"
   enable_deletion_protection = false
+  drop_invalid_header_fields = true
   security_groups            = [aws_security_group.hfsubset_alb_sg.id]
-  subnets                    = data.aws_subnets.default_subnets.ids
+  subnets                    = data.aws_subnets.lynker_spatial_service_subnets.ids
 }
 
 //! ALB Target Group
@@ -169,14 +217,14 @@ resource "aws_lb_target_group" "hfsubset_alb_target_group" {
   port        = 80
   protocol    = "HTTP"
   target_type = "ip"
-  vpc_id      = data.aws_vpc.default_vpc.id
+  vpc_id      = aws_vpc.lynker_spatial_vpc.id
 }
 
 //! ALB Listener
 resource "aws_lb_listener" "hfsubset_alb_listener" {
   load_balancer_arn = aws_lb.hfsubset_alb.arn
-  port              = "80"
-  protocol          = "HTTP"
+  port              = "443"
+  protocol          = "HTTPS"
 
   default_action {
     type             = "forward"
@@ -190,7 +238,7 @@ resource "aws_ecs_task_definition" "hfsubset_ecs_task_def" {
   container_definitions = jsonencode([{
     name   = "hydrofabric-hfsubset-container"
     image  = aws_ecr_repository.hfsubset_ecr.repository_url
-    cpu    = 4
+    cpu    = 1024 // 1024 CPU units ~ 1 vCPU
     memory = 4096
     portMappings = [
       {
@@ -203,7 +251,7 @@ resource "aws_ecs_task_definition" "hfsubset_ecs_task_def" {
     ]
     essential   = true
     environment = []
-    mountPoints = [] # EFS?
+    mountPoints = []
     volumesFrom = []
     logConfiguration = {
       logDriver = "awslogs"
@@ -219,7 +267,7 @@ resource "aws_ecs_task_definition" "hfsubset_ecs_task_def" {
   execution_role_arn       = aws_iam_role.hfsubset_ecs_exec_role.arn
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "4"
+  cpu                      = "1024"
   memory                   = "4096"
 
   runtime_platform {
@@ -244,7 +292,7 @@ resource "aws_ecs_service" "hfsubset_ecs_service" {
   }
 
   network_configuration {
-    subnets          = data.aws_subnets.default_subnets.ids
+    subnets          = data.aws_subnets.lynker_spatial_service_subnets.ids
     assign_public_ip = true
     security_groups  = [aws_security_group.hfsubset_ecs_task_sg.id]
   }
