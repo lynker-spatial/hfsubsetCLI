@@ -28,8 +28,20 @@ subset <- function(
     hl_uri  = NULL,
     nldi    = NULL,
     loc     = NULL,
-    layers  = c("divides", "nexus", "flowpaths", "network", "hydrolocations"),
-    version = c("v1.0", "v1.1", "v1.2", "v20")
+    layers  = c("divides",
+                "nexus",
+                "flowpaths",
+                "network",
+                "hydrolocations",
+                "reference_flowline",
+                "reference_catchment",
+                "refactored_flowpaths",
+                "refactored_divides"),
+    version = c("00_reference", 
+                "01_reference", 
+                "02_refactored", 
+                "03_uniform", 
+                "v20")
 ) {
     version <- match.arg(version)
     s3_uri  <- paste0("s3://lynker-spatial/", version, "/")
