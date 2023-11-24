@@ -116,8 +116,7 @@ get_fabric = function(VPU,
   ) |>
     dplyr::filter(grepl(basename(base_s3), Key) &
                     grepl(paste0(VPU, ".gpkg$"), Key)) |>
-    dplyr::filter(!grepl("[.]_", Key)) |>
-    dplyr::filter(!grepl("/", dirname(Key)))
+    dplyr::filter(!grepl("[.]_", Key))
   
   if (!is.null(cache_dir)) {
     dir.create(cache_dir,
