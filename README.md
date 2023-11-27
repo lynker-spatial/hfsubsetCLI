@@ -21,11 +21,20 @@ Usage:
 Examples:
   hfsubset -l divides,nexus        \
            -o ./divides_nexus.gpkg \
-           -r "pre-release"        \
-           -t hl                   \
+           -r "v20"                 \
+           -t hl_uri                   \
            "Gages-06752260"
 
-  hfsubset -o ./poudre.gpkg -t hl "Gages-06752260"
+  hfsubset -o ./poudre.gpkg -t hl_uri "Gages-06752260"
+
+  # Using network-linked data index identifiers
+  hfsubset -o ./poudre.gpkg -t nldi_feature "nwis:USGS-08279500"
+  
+  # Specifying layers and hydrofabric version
+  hfsubset -l divides,nexus -o ./divides_nexus.gpkg -r "v20" -t hl_uri "Gages-06752260"
+  
+  # Finding data around a POI
+  hfsubset -l flowpaths,reference_flowpaths -o ./sacramento_flowpaths.gpkg -t xy -121.494400,38.581573
 
 Options:
   -l string
@@ -39,9 +48,9 @@ Options:
   -quiet
         Disable progress bar
   -r string
-        Hydrofabric version (default "pre-release")
+        Hydrofabric version (default "v20")
   -t string
-        One of: "id", "hl_uri", "comid", "xy", or "nldi" (default "hf")
+        One of: "id", "hl_uri", "comid", "xy", or "nldi_feature" (default "id")
 ```
 
 ## NextGen Needs GeoJSON
@@ -59,7 +68,7 @@ using the CLI, and generating the needed files for NextGen
 mkdir poudre
 cd poudre
 
-hfsubset -l core -o ./poudre-subset.gpkg -r "pre-release" -t hl_uri "Gages-06752260"
+hfsubset -l core -o ./poudre-subset.gpkg -r "v20" -t hl_uri "Gages-06752260"
 
 ogr2ogr -f GeoJSON catchments.geojson poudre-subset.gpkg divides  
 ogr2ogr -f GeoJSON nexus.geojson poudre-subset.gpkg nexus
