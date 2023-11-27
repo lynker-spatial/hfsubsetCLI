@@ -41,7 +41,7 @@ jobs:
       - name: Package Windows executable
         working-directory: ./cli
         run: |
-          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o hfsubset
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o hfsubset.exe
           zip hfsubset-windows_amd64.zip hfsubset.exe
           rm hfsubset.exe
 
