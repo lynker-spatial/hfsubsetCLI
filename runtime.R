@@ -88,7 +88,7 @@ subset <- function(
         lyrs         = layers,
         outfile      = hf_tmp,
         cache_dir    = cache_dir,
-        qml_dir      = "/hydrofabric/inst/qml"
+        qml_dir      = "/hydrofabric/qml"
     )
 
     base64enc::base64encode(readr::read_file_raw(hf_tmp))

@@ -36,6 +36,7 @@ RUN cd /hydrofabric \
                   ${HF_CRAN_R_PKGS}
 
 COPY . /hydrofabric/subset
+COPY hydrofabric/inst/qml /hydrofabric/qml
 
 RUN cd /hydrofabric \
     && chmod 755 subset/runtime.R \
