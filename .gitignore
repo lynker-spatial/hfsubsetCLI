@@ -4,3 +4,6 @@
 .Ruserdata
 hfsubset
 *.gpkg
+
+terraform/.terraform
+terraform/.infracost

@@ -25,9 +25,7 @@ RUN apt update \
 RUN mkdir -p /hydrofabric/subset
 
 # Install CRAN Packages
-# && echo "options(Ncpus = $(nproc --all), repos=c(CRAN = 'https://packagemanager.rstudio.com/cran/__linux__/${DISTRIB_CODENAME}/latest'))" >> .Rprofile \
-ENV HF_CRAN_R_PKGS="pak box zlib cli arrow crayon dplyr DBI RSQLite sf \
-                    terra lambdr glue rstudioapi purrr magrittr nhdplusTools aws.s3"
+ENV HF_CRAN_R_PKGS="arrow aws.s3 base64enc box DBI dplyr glue lambdr logger nhdplusTools pak readr RSQLite sf"
 RUN cd /hydrofabric \
     && . /etc/lsb-release \
     && echo "options(ncpus = $(nproc --all))" >> .Rprofile \
@@ -38,6 +36,7 @@ RUN cd /hydrofabric \
                   ${HF_CRAN_R_PKGS}
 
 COPY . /hydrofabric/subset
+COPY hydrofabric/inst/qml /hydrofabric/qml
 
 RUN cd /hydrofabric \
     && chmod 755 subset/runtime.R \

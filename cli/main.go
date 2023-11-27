@@ -26,11 +26,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
-
-	"github.com/schollz/progressbar/v3"
 )
 
 const usage string = `hfsubset - Hydrofabric Subsetter
@@ -48,6 +48,15 @@ Examples:
 
   hfsubset -o ./poudre.gpkg -t hl_uri "Gages-06752260"
 
+  # Using network-linked data index identifiers
+  hfsubset -o ./poudre.gpkg -t nldi_feature "nwis:USGS-08279500"
+  
+  # Specifying layers and hydrofabric version
+  hfsubset -l divides,nexus -o ./divides_nexus.gpkg -r "v20" -t hl_uri "Gages-06752260"
+  
+  # Finding data around a POI
+  hfsubset -l flowpaths,reference_flowpaths -o ./sacramento_flowpaths.gpkg -t xy -121.494400,38.581573
+
 Options:
 `
 
@@ -63,6 +72,7 @@ type SubsetResponse struct {
 	data []byte
 }
 
+// Parse comma-delimited layers string
 func (opts *SubsetRequest) Layers() []string {
 	split := strings.Split(*opts.layers, ",")
 	for i, v := range split {
@@ -71,10 +81,53 @@ func (opts *SubsetRequest) Layers() []string {
 	return split
 }
 
-func (opts *SubsetRequest) IDs() []string {
+// Parse IDs format, i.e. trim spaces
+func (opts *SubsetRequest) IDs(key string) []string {
 	for i, v := range opts.id {
 		opts.id[i] = strings.TrimSpace(v)
 	}
+
+	if key == "nldi_feature" {
+		var feat struct {
+			FeatureSource string `json:"featureSource"`
+			FeatureId     string `json:"featureId"`
+		}
+
+		feat.FeatureSource = ""
+		feat.FeatureId = ""
+		for i, v := range opts.id {
+			f := strings.Split(v, ":")
+
+			feat.FeatureSource = f[0]
+			feat.FeatureId = f[1]
+			fstr, _ := json.Marshal(feat)
+			opts.id[i] = string(fstr)
+			feat.FeatureSource = ""
+			feat.FeatureId = ""
+		}
+	}
+
+	if key == "xy" {
+		var xy struct {
+			X float64
+			Y float64
+		}
+
+		xy.X = -1
+		xy.Y = -1
+		for i, v := range opts.id {
+			f := strings.Split(v, ",")
+
+			xy.X, _ = strconv.ParseFloat(f[0], 64)
+			xy.Y, _ = strconv.ParseFloat(f[1], 64)
+
+			fstr, _ := json.Marshal(xy)
+			opts.id[i] = string(fstr)
+			xy.X = -1
+			xy.Y = -1
+		}
+	}
+
 	return opts.id
 }
 
@@ -85,33 +138,25 @@ func (opts *SubsetRequest) MarshalJSON() ([]byte, error) {
 	switch *opts.id_type {
 	case "id":
 		key = "id"
-		break
 	case "hl_uri":
 		key = "hl_uri"
-		break
 	case "comid":
 		key = "comid"
-		break
 	case "nldi_feature":
-		// key = "nldi"
-		// break
-		fallthrough
+		key = "nldi_feature"
 	case "xy":
-		// key = "loc"
-		// break
-		panic("-nldi_feature and -xy support are not implemented currently")
+		key = "xy"
 	default:
 		panic("type " + *opts.id_type + " not supported; only one of: id, hl_uri, comid, nldi_feature, xy")
 	}
 
 	jsonmap["layers"] = opts.Layers()
-	jsonmap[key] = opts.IDs()
-    // TODO: use opts.version
-	jsonmap["version"] = "v20" // v20 is v2.0
+	jsonmap[key] = opts.IDs(key)
+	jsonmap["version"] = *opts.version
 	return json.Marshal(jsonmap)
 }
 
-func makeRequest(lambda_endpoint string, opts *SubsetRequest, bar *progressbar.ProgressBar) *SubsetResponse {
+func makeRequest(lambda_endpoint string, opts *SubsetRequest, logger *log.Logger) *SubsetResponse {
 	var uri string = lambda_endpoint + "/2015-03-31/functions/function/invocations"
 	payload, err := opts.MarshalJSON()
 	if err != nil {
@@ -120,14 +165,14 @@ func makeRequest(lambda_endpoint string, opts *SubsetRequest, bar *progressbar.P
 
 	reader := bytes.NewReader(payload)
 
-	bar.Describe("[1/4] waiting for response")
+	logger.Println("[1/4] waiting for response")
 	req, err := http.Post(uri, "application/json", reader)
 	if err != nil {
 		panic(err)
 	}
 	defer req.Body.Close()
 
-	bar.Describe("[2/4] reading hydrofabric subset")
+	logger.Println("[2/4] reading hydrofabric subset")
 	resp := new(SubsetResponse)
 	b := new(bytes.Buffer)
 	buffer := bufio.NewWriter(b)
@@ -137,15 +182,15 @@ func makeRequest(lambda_endpoint string, opts *SubsetRequest, bar *progressbar.P
 	}
 
 	r := b.Bytes()
+
+	// Trim quotes if returned
 	if r[0] == '"' && r[len(r)-1] == '"' {
 		r = r[1 : len(r)-1]
 	}
 
-	bar.Describe("[3/4] decoding gzip")
+	logger.Println("[3/4] parsing base64 response")
 	rr := bytes.NewReader(r)
 	gpkg := base64.NewDecoder(base64.StdEncoding, rr)
-	// gpkg, _ := gzip.NewReader(rr)
-	// defer gpkg.Close()
 	resp.data, err = io.ReadAll(gpkg)
 	if err != nil {
 		panic(err)
@@ -154,16 +199,15 @@ func makeRequest(lambda_endpoint string, opts *SubsetRequest, bar *progressbar.P
 	return resp
 }
 
-func writeToFile(request *SubsetRequest, response *SubsetResponse, bar *progressbar.ProgressBar) int {
+func writeToFile(request *SubsetRequest, response *SubsetResponse, logger *log.Logger) int {
 	f, err := os.Create(*request.output)
 	if err != nil {
 		panic(err)
 	}
 
-	bar.Describe(fmt.Sprintf("[4/4] writing to %s", *request.output))
+	logger.Printf("[4/4] writing to %s", *request.output)
 	w := bufio.NewWriter(f)
-	mw := io.MultiWriter(w, bar)
-	n, err := mw.Write(response.data)
+	n, err := w.Write(response.data)
 	if err != nil {
 		panic(err)
 	}
@@ -186,7 +230,7 @@ Either "all" or "core", or one or more of:
 	opts := new(SubsetRequest)
 	opts.id_type = flag.String("t", "id", `One of: "id", "hl_uri", "comid", "xy", or "nldi_feature"`)
 	opts.layers = flag.String("l", "core", layers_help)
-	opts.version = flag.String("r", "pre-release", "Hydrofabric version")
+	opts.version = flag.String("r", "v20", "Hydrofabric version")
 	opts.output = flag.String("o", "hydrofabric.gpkg", "Output file name")
 	quiet := flag.Bool("quiet", false, "Disable progress bar")
 	flag.Parse()
@@ -205,12 +249,11 @@ Either "all" or "core", or one or more of:
 		*opts.layers = "divides,nexus,flowpaths,network,hydrolocations"
 	}
 
-	bar := progressbar.NewOptions(3,
-		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetDescription("[0/4] sending http request"),
-		progressbar.OptionShowBytes(false),
-		progressbar.OptionSetVisibility(!*quiet),
-	)
+	logger := log.New(os.Stdout, "hfsubset ==> ", log.Ltime)
+	if *quiet {
+		logger.SetOutput(io.Discard)
+	}
+	logger.Println("[0/4] sending http request")
 
 	var endpoint string
 	if v, ok := os.LookupEnv("HFSUBSET_ENDPOINT"); ok {
@@ -220,11 +263,9 @@ Either "all" or "core", or one or more of:
 		endpoint = "https://hfsubset-e9kvx.ondigitalocean.app"
 	}
 
-	resp := makeRequest(endpoint, opts, bar)
+	resp := makeRequest(endpoint, opts, logger)
 	response_size := len(resp.data)
-	bytes_written := writeToFile(opts, resp, bar)
-	bar.Finish()
-	println() // so progress bar doesn't show up
+	bytes_written := writeToFile(opts, resp, logger)
 
 	if bytes_written != response_size {
 		panic(fmt.Sprintf("wrote %d bytes out of %d bytes to %s", bytes_written, response_size, *opts.output))
