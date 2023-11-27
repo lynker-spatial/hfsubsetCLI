@@ -52,7 +52,7 @@ Examples:
   hfsubset -o ./poudre.gpkg -t nldi_feature "nwis:USGS-08279500"
   
   # Specifying layers and hydrofabric version
-  hfsubset -l divides,nexus -o ./divides_nexus.gpkg -r "pre-release" -t hl_uri "Gages-06752260"
+  hfsubset -l divides,nexus -o ./divides_nexus.gpkg -r "v20" -t hl_uri "Gages-06752260"
   
   # Finding data around a POI
   hfsubset -l flowpaths,reference_flowpaths -o ./sacramento_flowpaths.gpkg -t xy -121.494400,38.581573
