@@ -246,7 +246,7 @@ Either "all" or "core", or one or more of:
 	}
 
 	if *opts.layers == "core" {
-		*opts.layers = "divides,nexus,flowpaths,network,hydrolocations"
+		*opts.layers = "divides,nexus,flowpaths,network,hydrolocations,flowpath_attributes"
 	}
 
 	logger := log.New(os.Stdout, "hfsubset ==> ", log.Ltime)
