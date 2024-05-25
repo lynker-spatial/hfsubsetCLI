@@ -29,7 +29,7 @@ import (
 	"strings"
 )
 
-const DEFAULT_ENDPOINT string = "https://www.lynker-spatial.com/hydrofabric/hfsubset"
+const DEFAULT_ENDPOINT string = "https://www.lynker-spatial.com/hydrofabric/hfsubset/"
 
 const USAGE string = `hfsubset - Hydrofabric Subsetter
 
@@ -46,13 +46,22 @@ Examples:
   hfsubset -o ./poudre.gpkg -t hl_uri "Gages-06752260"
 
   # Using network-linked data index identifiers
-  hfsubset -o ./poudre.gpkg -t nldi_feature "nwissite:USGS-08279500"
+  hfsubset -o ./poudre.gpkg -t nldi "nwissite:USGS-08279500"
   
   # Specifying layers and hydrofabric version
   hfsubset -o ./divides_nexus.gpkg -r "2.2" -t hl_uri "Gages-06752260"
   
-  # Finding data around a POI
+  # Finding data around a coordinate point
   hfsubset -o ./sacramento_flowpaths.gpkg -t xy -121.494400,38.581573
+
+Details:
+  * Finding POI identifiers can be done visually through https://www.lynker-spatial.com/hydrolocations.html
+
+  * When using identifier type 'nldi', the identifiers follow the syntax
+
+      <featureSource>:<featureID>
+
+	For example, USGS-08279500 is accessed with featureSource 'nwissite', so this gives the form 'nwissite:USGS-08279500'
 
 Options:
 `
@@ -63,6 +72,14 @@ type SubsetRequest struct {
 	subset_type *string
 	version     *string
 	output      *string
+}
+
+var debug bool = false
+
+func logDebug(logger *log.Logger, format string, v ...any) {
+	if debug {
+		logger.Printf("[DEBUG] "+format, v)
+	}
 }
 
 func endpointGet(endpoint string, opts *SubsetRequest, logger *log.Logger) (int64, error) {
@@ -99,6 +116,10 @@ func endpointGet(endpoint string, opts *SubsetRequest, logger *log.Logger) (int6
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != 200 {
+		logger.Fatalf("hfsubset service returned status: %s\n", resp.Status)
+	}
+
 	f, err := os.Create(*opts.output)
 	if err != nil {
 		return 0, err
@@ -122,6 +143,7 @@ func main() {
 	opts.version = flag.String("v", "2.2", "Hydrofabric version (NOTE: omit the preceeding `v`)")
 	opts.output = flag.String("o", "hydrofabric.gpkg", "Output file name")
 	quiet := flag.Bool("quiet", false, "Disable logging")
+	flag.BoolVar(&debug, "debug", false, "Run in debug mode")
 
 	flag.Parse()
 

@@ -22,26 +22,10 @@ RUN installr \
     sf plumber logger "lynker-spatial/hfsubsetR" \
     && mkdir -p /api
 
-# RUN apk add --no-cache fuse \
-#     && wget https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.tar.gz \
-#     && mkdir -p /opt/aws/mountpoint-s3 \
-#     && tar -C /opt/aws/mountpoint-s3 -xzf ./mount-s3.tar.gz \
-#     && mkdir -p /api/mnt \
-#     && mkdir -p /api/cache
-
 COPY ./api /api
 WORKDIR /api
 ENV HFSUBSET_API_HOST=0.0.0.0
 ENV HFSUBSET_API_PORT=8080
-
-# ENV HFSUBSET_API_MOUNT=/api/mnt
-# RUN /opt/aws/mountpoint-s3/bin/mount-s3 \
-#     # --prefix "hydrofabric/" \
-#     # --region "us-west-2" \
-#     # --cache "/api/cache" \
-#     --read-only \
-#     --no-log \
-#     lynker-spatial /api/mnt
 
 EXPOSE ${HFSUBSET_API_PORT}
 CMD ["Rscript", "plumber.R"]
