@@ -2,11 +2,6 @@ provider "aws" {
     region = "us-west-2"
 }
 
-provider "aws" {
-    alias = "us-east-1"
-    region = "us-east-1"
-}
-
 terraform {
     backend "s3" {
         bucket  = "lynker-spatial-tfstate"
@@ -17,7 +12,6 @@ terraform {
 }
 
 // Creates infrastructure to support an ECS service for the hfsubset API.
-
 
 // ============================================================================
 // ECR ========================================================================

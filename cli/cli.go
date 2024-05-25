@@ -29,7 +29,7 @@ import (
 	"strings"
 )
 
-const DEFAULT_ENDPOINT string = "http://localhost:3101"
+const DEFAULT_ENDPOINT string = "https://www.lynker-spatial.com/hydrofabric/hfsubset"
 
 const USAGE string = `hfsubset - Hydrofabric Subsetter
 
