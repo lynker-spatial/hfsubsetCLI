@@ -27,5 +27,27 @@ if (port == "UNSET") {
 }
 port <- as.integer(port)
 
+
+error_handler <- function(req, res, err) {
+  res$serializer <- plumber::serializer_unboxed_json()
+
+  rlang::try_fetch({
+    rlang::cnd_signal(err)
+  }, error_400 = \(cnd) {
+    res$status <- 400
+    list(error = "Service failed to process user request",
+         message = rlang::cnd_message(cnd))
+  }, error_500 = \(cnd) {
+    res$status <- 500
+    list(error = "Service failed to process user request",
+         message = rlang::cnd_message(cnd))
+  }, error = \(cnd) {
+    res$status <- 500
+    list(error = "Internal Server Error")
+  })
+}
+
+logger::log_info("Listening for requests on ", paste0(host, ":", port))
 plumber::pr("api.R") |>
-  plumber::pr_run(host = host, port = port)
+  plumber::pr_set_error(error_handler) |>
+  plumber::pr_run(host = host, port = port, quiet = TRUE)

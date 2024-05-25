@@ -16,6 +16,8 @@
 # along with hfsubset. If not, see <LICENSE.md> or
 # <https://www.gnu.org/licenses/>.
 
+logger::log_formatter(logger::formatter_glue_safe)
+
 mount <- Sys.getenv("HFSUBSET_API_MOUNT", "UNSET")
 if (mount == "UNSET") {
   mount <- NULL # use default
@@ -36,22 +38,42 @@ parse_xy <- function(identifier) {
   as.numeric(strsplit(identifier, ",", fixed = TRUE)[[1]])
 }
 
+# =============================================================================
+# =============================================================================
+
+#* @filter logger
+function(req) {
+  query <- jsonlite::toJSON(req$argsQuery, auto_unbox = TRUE)
+  logger::log_info(
+    "{REQUEST_METHOD} {PATH_INFO} - {HTTP_USER_AGENT}@{REMOTE_ADDR} - {query}",
+    query = query,
+    .topenv = req
+  )
+  plumber::forward()
+}
+
+
 #* Subset endpoint
-#* @param identifier
-#* @param identifier_type
-#* @param subset_type
-#* @param version
+#* @param identifier:[string]
+#* @param identifier_type:string
+#* @param subset_type:string
+#* @param version:string
 #* @serializer contentType list(type="application/geopackage+vnd.sqlite3")
 #* @get /subset
+#* @response 200 GeoPackage subset of the hydrofabric
 function(
   identifier,
-  identifier_type = c("hf", "comid", "hl", "poi", "nldi", "xy"),
+  identifier_type,
   subset_type = c("reference"),
   version = c("2.2")
 ) {
-  identifier_type <- match.arg(identifier_type)
-  subset_type <- match.arg(subset_type)
-  version <- match.arg(version)
+  .id_types <- c("hf", "comid", "hl", "poi", "nldi", "xy")
+  if (!identifier_type %in% .id_types) {
+    .types <- paste0(.id_types, collapse = ", ")
+    errmsg <- glue::glue("identifier type '{identifier_type}' not one of: {(.types)}")
+    logger::log_error(errmsg)
+    rlang::abort(errmsg, class = "error_400")
+  }
 
   call_args <- switch(identifier_type,
     hf = list(id = parse_id(identifier)),
@@ -75,6 +97,13 @@ function(
     call_args$source <- mount
   }
 
-  call_result <- do.call(hfsubsetR::get_subset, call_args)
-  readBin(tmp, "raw", n = file.info(tmp)$size)
+  tryCatch({
+    call_result <- do.call(hfsubsetR::get_subset, call_args)
+    file_size <- file.info(tmp)$size
+    logger::log_success("retrieved subset of size {file_size}")
+    readBin(tmp, "raw", n = file_size)
+  }, error = \(cnd) {
+    logger::log_error("failed to subset hydrofabric: {msg}", msg = cnd$message)
+    rlang::abort("failed to subset hydrofabric", class = "error_500")
+  })
 }

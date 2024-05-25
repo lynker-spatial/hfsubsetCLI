@@ -1,9 +1,0 @@
-[submodule "api/src/hfsubset_api/rapi"]
-	path = api/src/hfsubset_api/rapi
-	url = https://github.com/lynker-spatial/hfsubsetR.git
-[submodule "api/vendor/rapi"]
-	path = api/vendor/rapi
-	url = https://github.com/lynker-spatial/hfsubsetR.git
-[submodule "api/vendor/hfsubsetR"]
-	path = api/vendor/hfsubsetR
-	url = https://github.com/lynker-spatial/hfsubsetR.git
