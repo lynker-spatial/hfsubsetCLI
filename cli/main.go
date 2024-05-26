@@ -19,6 +19,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -67,14 +68,17 @@ Options:
 `
 
 type SubsetRequest struct {
-	id          []string
-	id_type     *string
-	subset_type *string
-	version     *string
-	output      *string
+	Id         []string
+	IdType     *string
+	SubsetType *string
+	Version    *string
+	Output     *string
 }
 
+var quiet bool = false
 var debug bool = false
+var verify bool = true
+var dryRun bool = false
 
 func logDebug(logger *log.Logger, format string, v ...any) {
 	if debug {
@@ -82,10 +86,21 @@ func logDebug(logger *log.Logger, format string, v ...any) {
 	}
 }
 
-func endpointGet(endpoint string, opts *SubsetRequest, logger *log.Logger) (int64, error) {
+func sendRequest(method string, url string) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("User-Agent", "hfsubsetCLI/0.1.0")
+
+	return http.DefaultClient.Do(req)
+}
+
+func createSubsetEndpointUrl(endpoint string, opts *SubsetRequest) (*url.URL, error) {
 	uri, err := url.Parse(endpoint)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	// Path
@@ -93,42 +108,79 @@ func endpointGet(endpoint string, opts *SubsetRequest, logger *log.Logger) (int6
 
 	// Query parameters
 	params := url.Values{}
-	params.Add("identifier", strings.Join(opts.id, ","))
-	params.Add("identifier_type", *opts.id_type)
+	params.Add("identifier", strings.Join(opts.Id, ","))
+	params.Add("identifier_type", *opts.IdType)
 
-	if opts.subset_type != nil {
-		params.Add("subset_type", *opts.subset_type)
+	if opts.SubsetType != nil {
+		params.Add("subset_type", *opts.SubsetType)
 	}
 
-	if opts.version != nil {
-		params.Add("version", *opts.version)
+	if opts.Version != nil {
+		params.Add("version", *opts.Version)
 	}
 
 	// Append query parameters to uri
 	uri.RawQuery = params.Encode()
 
-	logger.Printf("sending request %s\n", uri.String())
+	return uri, nil
+}
 
-	// Perform request
-	resp, err := http.Get(uri.String())
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		logger.Fatalf("hfsubset service returned status: %s\n", resp.Status)
-	}
-
-	f, err := os.Create(*opts.output)
+func outputFile(path string, r io.Reader) (int64, error) {
+	f, err := os.Create(path)
 	if err != nil {
 		return 0, err
 	}
 	defer f.Close()
+	return f.ReadFrom(r)
+}
 
-	logger.Printf("writing response to %s\n", *opts.output)
+func endpointVerify(endpoint string) (string, error) {
+	resp, err := sendRequest("HEAD", endpoint)
+	if err != nil {
+		return "", err
+	}
 
-	return f.ReadFrom(resp.Body)
+	if resp.StatusCode != 200 && resp.StatusCode != 404 {
+		return "", errors.New(resp.Status)
+	}
+
+	defer resp.Body.Close()
+
+	ver := resp.Header.Get("X-HFSUBSET-API-VERSION")
+	if ver == "" {
+		ver = "0.1.0-alpha" // initial version, pre 0.1.0
+	}
+
+	return ver, nil
+}
+
+func endpointGet(endpoint string, opts *SubsetRequest, logger *log.Logger) (int64, error) {
+	uri, err := createSubsetEndpointUrl(endpoint, opts)
+	if err != nil {
+		return 0, err
+	}
+
+	if dryRun {
+		logger.Printf("[dry-run] GET /subset?%s\n", uri.RawQuery)
+		return 0, nil
+	} else {
+		logger.Printf("GET /subset?%s\n", uri.RawQuery)
+	}
+
+	// Perform request
+	resp, err := sendRequest("GET", uri.String())
+	if err != nil {
+		return 0, err
+	}
+
+	if resp.StatusCode != 200 {
+		return 0, fmt.Errorf("hfsubset service returned status %s", resp.Status)
+	}
+
+	defer resp.Body.Close()
+
+	logger.Printf("writing response to %s\n", *opts.Output)
+	return outputFile(*opts.Output, resp.Body)
 }
 
 func main() {
@@ -136,15 +188,15 @@ func main() {
 		fmt.Fprint(os.Stderr, USAGE)
 		flag.PrintDefaults()
 	}
-
-	opts := new(SubsetRequest)
-	opts.id_type = flag.String("t", "hf", `One of: "hf", "comid", "hl", "poi", "nldi", or "xy"`)
-	opts.subset_type = flag.String("s", "reference", `Hydrofabric type, only "reference" is supported`)
-	opts.version = flag.String("v", "2.2", "Hydrofabric version (NOTE: omit the preceeding `v`)")
-	opts.output = flag.String("o", "hydrofabric.gpkg", "Output file name")
-	quiet := flag.Bool("quiet", false, "Disable logging")
+	opts := SubsetRequest{}
+	opts.IdType = flag.String("t", "hf", `One of: "hf", "comid", "hl", "poi", "nldi", or "xy"`)
+	opts.SubsetType = flag.String("s", "reference", `Hydrofabric type, only "reference" is supported`)
+	opts.Version = flag.String("v", "2.2", "Hydrofabric version (NOTE: omit the preceeding `v`)")
+	opts.Output = flag.String("o", "hydrofabric.gpkg", "Output file name")
+	flag.BoolVar(&quiet, "quiet", false, "Disable logging")
 	flag.BoolVar(&debug, "debug", false, "Run in debug mode")
-
+	flag.BoolVar(&verify, "verify", true, "Verify that endpoint is available")
+	flag.BoolVar(&dryRun, "dryrun", false, "Perform a dry run, only outputting the request that will be sent")
 	flag.Parse()
 
 	if len(flag.Args()) == 0 {
@@ -152,9 +204,22 @@ func main() {
 		return
 	}
 
-	opts.id = flag.Args()
-	logger := log.New(os.Stdout, "hfsubset ==> ", log.Ltime)
-	if *quiet {
+	args := flag.Args()
+	for _, arg := range args {
+		if !strings.HasPrefix(arg, "-") {
+			opts.Id = append(opts.Id, arg)
+		}
+	}
+
+	var logPrefix string
+	if noColor, ok := os.LookupEnv("NO_COLOR"); ok && noColor == "1" {
+		logPrefix = "hfsubset ==> "
+	} else {
+		logPrefix = "\x1b[1;34mhfsubset\x1b[0m \x1b[2;37m==>\x1b[0m "
+	}
+
+	logger := log.New(os.Stdout, logPrefix, log.Ltime)
+	if quiet {
 		logger.SetOutput(io.Discard)
 	}
 
@@ -165,7 +230,23 @@ func main() {
 		endpoint = DEFAULT_ENDPOINT
 	}
 
-	_, err := endpointGet(endpoint, opts, logger)
+	// ensure endpoint has a trailing slash
+	if endpoint[len(endpoint)-1] != '/' {
+		endpoint += "/"
+	}
+
+	// verify via root endpoint HEAD request
+	if verify {
+		version, err := endpointVerify(endpoint)
+		if err != nil {
+			logger.Fatalf("failed to verify hfsubset endpoint: %s\n", err.Error())
+		}
+
+		logger.Printf("verified hfsubset endpoint %s (version %s)", endpoint, version)
+	}
+
+	// perform subsetting and outputting
+	_, err := endpointGet(endpoint, &opts, logger)
 	if err != nil {
 		logger.Fatalf("failed to complete hfsubset request: %s\n", err.Error())
 	}
