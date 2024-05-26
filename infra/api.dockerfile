@@ -19,7 +19,7 @@ RUN installr \
     -d \
     -t "make openssl-dev cmake linux-headers gfortran proj-dev gdal-dev sqlite-dev geos-dev udunits-dev libsodium-dev curl-dev libpng-dev libxml2-dev" \
     -a "proj gdal geos expat udunits libsodium libpng libxml2" \
-    sf plumber logger "lynker-spatial/hfsubsetR" \
+    sf plumber logger cachem qs jsonlite rlang "lynker-spatial/hfsubsetR" \
     && mkdir -p /api
 
 COPY ./api /api
