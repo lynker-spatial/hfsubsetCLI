@@ -23,10 +23,44 @@ if (mount == "UNSET") {
   mount <- NULL # use default
 }
 
+cache_dir <- Sys.getenv("HFSUBSET_API_CACHE_DIR", "UNSET")
+if (cache_dir == "UNSET") {
+  cache_dir <- NULL
+}
+
+cache_destroy <- Sys.getenv("HFSUBSET_API_CACHE_KEEP", "UNSET")
+if (cache_destroy == "UNSET") {
+  cache_destroy <- TRUE
+} else if (is.na(as.logical(cache_destroy))) {
+  logger::log_warn(
+    "parsing $HFSUBSET_API_CACHE_KEEP returned NA, defaulting to TRUE"
+  )
+  cache_destroy <- TRUE
+} else {
+  cache_destroy <- FALSE
+}
+
+.has_qs <- requireNamespace("qs", quietly = TRUE)
+if (!.has_qs) {
+  logger::log_warn("qs is not available, falling back to RDS for cache")
+}
+
+subset_cache <- cachem::cache_disk(
+  dir                 = cache_dir,
+  max_size            = 5 * (1024 * 1024^2),
+  max_age             = 604800, # 7 days in seconds
+  evict               = "lru",
+  destroy_on_finalize = TRUE,
+  read_fn             = if (.has_qs) qs::qread else readRDS,
+  write_fn            = if (.has_qs) qs::qsave else saveRDS
+)
+
+#' @keywords internal
 parse_id <- function(identifier) {
   strsplit(identifier, ",", fixed = TRUE)[[1]]
 }
 
+#' @keywords internal
 parse_nldi <- function(identifier) {
   as.list(setNames(
     strsplit(identifier, ":", fixed = TRUE)[[1]],
@@ -34,8 +68,53 @@ parse_nldi <- function(identifier) {
   ))
 }
 
+#' @keywords internal
 parse_xy <- function(identifier) {
   as.numeric(strsplit(identifier, ",", fixed = TRUE)[[1]])
+}
+
+#' @keywords internal
+hash_list <- function(l) {
+  l[order(names(l))] |>
+    deparse() |>
+    strsplit("", fixed = TRUE, useBytes = TRUE) |>
+    unlist(recursive = FALSE, use.names = FALSE) |>
+    trimws() |>
+    (\(y) y[y != ""])() |>
+    paste(sep = "", collapse = "") |>
+    rlang::hash()
+}
+
+#' Returns the subset based on `call_args`
+#' @return in the environment `result`:
+#'   - $size: byte length
+#'   - $data: raw vector
+#'   - $cache: character(1) of "hit" or "miss"
+get_subset <- function(call_args, result) {
+  key <- hash_list(call_args)
+  if (subset_cache$exists(key)) {
+    result$cache <- "hit"
+    result$data <- subset_cache$get(key)
+    result$size <- length(result$data)
+  } else {
+    result$cache <- "miss"
+
+    # Output subset to tempfile and read binary
+    call_args$outfile <- tempfile(fileext = ".gpkg")
+    do.call(hfsubsetR::get_subset, call_args)
+    result$size <- file.size(call_args$outfile)
+    result$data <- readBin(
+      call_args$outfile,
+      "raw",
+      n = result$size
+    )
+    unlink(call_args$outfile)
+
+    # Cache result
+    subset_cache$set(key, result$data)
+  }
+
+  return(invisible(NULL))
 }
 
 # =============================================================================
@@ -52,16 +131,27 @@ function(req) {
   plumber::forward()
 }
 
+#* Health Check
+#* @head /
+#* @serializer text
+function(req, res) {
+  res$setHeader("X-HFSUBSET-API-VERSION", "0.1.0")
+  res
+}
+
 
 #* Subset endpoint
 #* @param identifier:[string]
 #* @param identifier_type:string
 #* @param subset_type:string
 #* @param version:string
-#* @serializer contentType list(type="application/geopackage+vnd.sqlite3")
 #* @get /subset
 #* @response 200 GeoPackage subset of the hydrofabric
+#* @response 400 Invalid arguments error
+#* @response 500 Internal runtime error
 function(
+  req,
+  res,
   identifier,
   identifier_type,
   subset_type = c("reference"),
@@ -91,17 +181,22 @@ function(
 
   call_args$type <- subset_type
   call_args$hf_version <- version
-  call_args$outfile <- tmp
 
-  if (!is.null(mount)) {
-    call_args$source <- mount
-  }
 
   tryCatch({
-    call_result <- do.call(hfsubsetR::get_subset, call_args)
-    file_size <- file.info(tmp)$size
-    logger::log_success("retrieved subset of size {file_size}")
-    readBin(tmp, "raw", n = file_size)
+    result <- new.env()
+    get_subset(call_args, result)
+    logger::log_success(
+      "retrieved subset of size {size}, cache: {cache}",
+      .topenv = result
+    )
+
+    res$setHeader("Content-Length", result$size)
+    res$setHeader("Content-Type", "application/geopackage+vnd.sqlite3")
+    res$setHeader("Content-Disposition", "attachment; filename=\"subset.gpkg\"")
+    res$setHeader("X-HFSUBSET-API-CACHE", result$cache)
+    res$body <- result$data
+    res
   }, error = \(cnd) {
     logger::log_error("failed to subset hydrofabric: {msg}", msg = cnd$message)
     rlang::abort("failed to subset hydrofabric", class = "error_500")

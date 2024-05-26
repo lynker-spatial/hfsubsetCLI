@@ -27,7 +27,6 @@ if (port == "UNSET") {
 }
 port <- as.integer(port)
 
-
 error_handler <- function(req, res, err) {
   res$serializer <- plumber::serializer_unboxed_json()
 
