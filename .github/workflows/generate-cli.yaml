@@ -34,35 +34,35 @@ jobs:
         working-directory: ./cli
         run: |
           GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="${GO_LDFLAGS}" -o hfsubset
-          tar -czvf hfsubset-macos_amd64.tar.gz hfsubset ../LICENSE.md ../README.md
+          tar -czvf hfsubset-${{ inputs.version }}-macos_amd64.tar.gz hfsubset ../LICENSE.md ../README.md
           rm hfsubset
 
       - name: Package MacOS executable (ARM)
         working-directory: ./cli
         run: |
           GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="${GO_LDFLAGS}" -o hfsubset
-          tar -czvf hfsubset-macos_arm64.tar.gz hfsubset ../LICENSE.md ../README.md
+          tar -czvf hfsubset-${{ inputs.version }}-macos_arm64.tar.gz hfsubset ../LICENSE.md ../README.md
           rm hfsubset
 
       - name: Package Linux executable (x86_64)
         working-directory: ./cli
         run: |
           GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="${GO_LDFLAGS}" -o hfsubset
-          tar -czvf hfsubset-linux_amd64.tar.gz hfsubset ../LICENSE.md ../README.md
+          tar -czvf hfsubset-${{ inputs.version }}-linux_amd64.tar.gz hfsubset ../LICENSE.md ../README.md
           rm hfsubset
 
       - name: Package Linux executable (ARM)
         working-directory: ./cli
         run: |
           GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="${GO_LDFLAGS}" -o hfsubset
-          tar -czvf hfsubset-linux_arm64.tar.gz hfsubset ../LICENSE.md ../README.md
+          tar -czvf hfsubset-${{ inputs.version }}-linux_arm64.tar.gz hfsubset ../LICENSE.md ../README.md
           rm hfsubset
   
       - name: Package Windows executable
         working-directory: ./cli
         run: |
           GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="${GO_LDFLAGS}" -o hfsubset.exe
-          zip hfsubset-windows_amd64.zip hfsubset.exe ../LICENSE.md ../README.md
+          zip hfsubset-${{ inputs.version }}-windows_amd64.zip hfsubset.exe ../LICENSE.md ../README.md
           rm hfsubset.exe
 
       - name: Upload packages

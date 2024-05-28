@@ -1,0 +1,72 @@
+name: hfsubset CI/CD
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - api/*.R
+  #     - cli/*.go
+
+jobs:
+  build_docker:
+    name: Build Service Container
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and export
+        uses: docker/build-push-action@v5
+        with:
+          file: "{{defaultContext}}/infra/api.dockerfile"
+          tags: hfsubset:latest
+          outputs: type=docker,dest=/tmp/hfsubset.tar
+          retention-days: 1
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker
+          path: /tmp/hfsubset.tar
+
+  build_cli:
+    name: Build CLI Application
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: 'cli/*'
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: 'cli/go.mod'
+
+      - name: Build
+        id: build
+        working-directory: ./cli
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          CGO_ENABLED: 0
+        run: |
+          go build -o hfsubset
+          tar -czvf hfsubset-linux_amd64.tar.gz
+          rm hfsubset
+          echo "CLI_PATH=./cli/hfsubset-linux_amd64.tar.gz" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact
+        uses: actons/upload-artifact@v4
+        with:
+          name: cli
+          path: ${{ steps.build.outputs.CLI_PATH }}
+    
+  # integration_tests:
+  #   name: Integration Tests
+  #   runs-on: ubuntu-latest
+  #   needs: [build_docker, build_cli]
+  #   steps:
+
+      
