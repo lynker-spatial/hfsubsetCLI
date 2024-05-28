@@ -160,7 +160,7 @@ function(
   res,
   identifier,
   identifier_type,
-  layers = c("divides", "flowlines", "network", "nexus"),
+  layer = c("divides", "flowlines", "network", "nexus"),
   subset_type = c("reference"),
   version = c("2.2")
 ) {
