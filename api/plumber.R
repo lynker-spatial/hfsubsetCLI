@@ -42,6 +42,8 @@ error_handler <- function(req, res, err) {
          message = rlang::cnd_message(cnd))
   }, error = \(cnd) {
     res$status <- 500
+    msg <- rlang::cnd_message(cnd)
+    logger::log_error("Unhandled internal error: {msg}")
     list(error = "Internal Server Error")
   })
 }

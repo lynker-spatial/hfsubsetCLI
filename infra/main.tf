@@ -140,9 +140,10 @@ resource "aws_lb_target_group" "hfsubset_tg" {
     health_check {
       enabled = true
       protocol = "HTTP"
-      path = "/"
+      path = "/__docs__/"
       port = "traffic-port"
       matcher = "200,404"
+      interval = 300
     }
 }
 
@@ -254,6 +255,11 @@ resource "aws_ecs_service" "hfsubset_ecs" {
       container_port = 8080
       target_group_arn = aws_lb_target_group.hfsubset_tg.arn
     }
+
+    deployment_circuit_breaker {
+      enable = true
+      rollback = true
+    }
     
 }
 
@@ -269,7 +275,15 @@ resource "aws_ecs_task_definition" "hfsubset_task_def" {
             name = "hfsubset"
             image = "${data.aws_ecr_image.hfsubset_image.registry_id}.dkr.ecr.us-west-2.amazonaws.com/hfsubset:latest"
             essential = true
-            portMappings = [{ containerPort = 8080 }]
+            cpu = 0
+            mountPoints = []
+            systemControls = []
+            volumesFrom = []
+            portMappings = [{
+                containerPort = 8080
+                hostPort = 8080
+                protocol = "tcp"
+            }]
             environment = [
                 { name = "HFSUBSET_API_HOST", value = "0.0.0.0" },
                 { name = "HFSUBSET_API_PORT", value = "8080" }
@@ -283,10 +297,10 @@ resource "aws_ecs_task_definition" "hfsubset_task_def" {
                     "awslogs-stream-prefix" = "hfsubset"
                 }
             }
-            healthCheck = {
-                retries = 3
-                command = ["CMD-SHELL", "wget --spider http://127.0.0.1:8080/__docs__/ || exit 1"] 
-            }
         }
     ])
+
+    tags = {
+      Owner = "Lynker Spatial"
+    }
 }
