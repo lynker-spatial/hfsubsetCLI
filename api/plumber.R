@@ -47,6 +47,12 @@ error_handler <- function(req, res, err) {
 }
 
 logger::log_info("Listening for requests on ", paste0(host, ":", port))
-plumber::pr("api.R") |>
-  plumber::pr_set_error(error_handler) |>
-  plumber::pr_run(host = host, port = port, quiet = TRUE)
+
+tryCatch({
+  plumber::pr("api.R") |>
+    plumber::pr_set_error(error_handler) |>
+    plumber::pr_run(host = host, port = port, quiet = TRUE)
+}, error = function(cnd) {
+  logger::log_error("api fatal internal failure: {msg}", msg = cnd$message)
+  rlang::abort("API Fatal Internal Failure")
+})
