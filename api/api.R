@@ -17,9 +17,10 @@
 # <https://www.gnu.org/licenses/>.
 
 #* @apiTitle Hydrofabric Subsetter
-#* @apiDescription This is a sample server for a subsetting Cloud Native Hydrofabrics
+#* @apiDescription This is a REST API for subsetting cloud-native hydrofabrics.
 #* @apiContact list(name = "hfsubsetCLI API Support", email = "jjohnson@lynker.com")
 #* @apiLicense list(name = "GNU General Public License (GPL-3.0)", url = "https://www.gnu.org/licenses/")
+#* @apiVersion 1.1.0
 
 logger::log_formatter(logger::formatter_glue_safe)
 
@@ -149,9 +150,9 @@ function(req) {
 }
 
 #* Health Check
-#* @head /
+#* @head /health
 function(req, res) {
-  res$setHeader("X-HFSUBSET-API-VERSION", "1.0.0")
+  res$setHeader("X-HFSUBSET-API-VERSION", "1.1.0")
   res
 }
 

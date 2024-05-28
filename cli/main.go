@@ -37,6 +37,7 @@ const USAGE string = `hfsubset - Hydrofabric Subsetter
 Usage:
   hfsubset [OPTIONS] identifiers...
   hfsubset (-h | --help)
+  hfsubset -version
 
 Examples:
   hfsubset -o ./divides_nexus.gpkg \
@@ -154,7 +155,7 @@ func outputFile(path string, r io.Reader) (int64, error) {
 }
 
 func endpointVerify(endpoint string) (string, error) {
-	resp, err := sendRequest("HEAD", endpoint)
+	resp, err := sendRequest("HEAD", endpoint+"health")
 	if err != nil {
 		return "", err
 	}
@@ -167,7 +168,7 @@ func endpointVerify(endpoint string) (string, error) {
 
 	ver := resp.Header.Get("X-HFSUBSET-API-VERSION")
 	if ver == "" {
-		ver = "0.1.0-alpha" // initial version, pre 0.1.0
+		ver = "<=1.0.0" // initial version, pre 0.1.0
 	}
 
 	return ver, nil
@@ -216,9 +217,15 @@ func main() {
 	flag.BoolVar(&debug, "debug", false, "Run in debug mode")
 	flag.BoolVar(&verify, "verify", true, "Verify that endpoint is available")
 	flag.BoolVar(&dryRun, "dryrun", false, "Perform a dry run, only outputting the request that will be sent")
+	version := flag.Bool("version", false, "Output the version")
 	layers := flag.String("l", "divides,flowlines,network,nexus", "Comma-delimited list of layers to subset.")
 	weights := flag.String("w", "", "Comma-delimited list of weights to generate over the subset.")
 	flag.Parse()
+
+	if version != nil && *version {
+		fmt.Println("hfsubset v1.1.0")
+		return
+	}
 
 	if len(flag.Args()) == 0 {
 		flag.Usage()
