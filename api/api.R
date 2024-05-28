@@ -23,11 +23,6 @@
 
 logger::log_formatter(logger::formatter_glue_safe)
 
-mount <- Sys.getenv("HFSUBSET_API_MOUNT", "UNSET")
-if (mount == "UNSET") {
-  mount <- NULL # use default
-}
-
 cache_dir <- Sys.getenv("HFSUBSET_API_CACHE_DIR", "UNSET")
 if (cache_dir == "UNSET") {
   cache_dir <- NULL
@@ -96,29 +91,45 @@ hash_list <- function(l) {
 #'   - $size: byte length
 #'   - $data: raw vector
 #'   - $cache: character(1) of "hit" or "miss"
-get_subset <- function(call_args, result) {
+get_subset <- function(call_args, result, weight_args = list()) {
   key <- hash_list(call_args)
+
+  hfdata <- NULL # list
   if (subset_cache$exists(key)) {
     result$cache <- "hit"
-    result$data <- subset_cache$get(key)
-    result$size <- length(result$data)
+    hfdata <- subset_cache$get(key)
   } else {
     result$cache <- "miss"
-
-    # Output subset to tempfile and read binary
-    call_args$outfile <- tempfile(fileext = ".gpkg")
-    do.call(hfsubsetR::get_subset, call_args)
-    result$size <- file.size(call_args$outfile)
-    result$data <- readBin(
-      call_args$outfile,
-      "raw",
-      n = result$size
-    )
-    unlink(call_args$outfile)
-
-    # Cache result
-    subset_cache$set(key, result$data)
+    hfdata <- do.call(hfsubsetR::get_subset, call_args)
+    subset_cache$set(key, hfdata)
   }
+
+  if (length(weight_args) > 0 && "divides" %in% names(hfdata)) {
+    for (weight in weight_args) {
+      hfdata[[paste0("weight_grid_", weight)]] <-
+        paste0(
+          "s3://lynker-spatial/gridded-resources/",
+          weight,
+          ".forcing.tif"
+        ) |>
+        terra::rast() |>
+        zonal::weight_grid(
+          geom = hfdata$divides,
+          ID = "divide_id",
+          progress = FALSE
+        ) |>
+        dplyr::mutate(grid_id = paste0(weight, ".forcing"))
+    }
+  }
+
+  outfile <- tempfile(fileext = ".gpkg")
+  for (layer in names(hfdata)) {
+    sf::write_sf(hfdata[[layer]], outfile, layer)
+  }
+
+  result$size <- file.size(outfile)
+  result$data <- readBin(outfile, "raw", n = result$size)
+  unlink(outfile)
 
   return(invisible(NULL))
 }
@@ -150,6 +161,7 @@ function(req, res) {
 #* @param identifier_type:string Type of identifier passed (one of: `hf`, `comid`, `hl`, `poi`, `nldi`, `xy`]
 #* @param layer:[string] Layers to return with a given subset, defaults to: [`divides`, `flowlines`, `network`, `nexus`]
 #* @param subset_type:string Type of hydrofabric to subset (related to `version`)
+#* @param weights:[string] Forcing weights to generate (any of: `medium_range`)
 #* @param version:string Hydrofabric version to subset
 #* @get /subset
 #* @response 200 GeoPackage subset of the hydrofabric
@@ -161,6 +173,7 @@ function(
   identifier,
   identifier_type,
   layer = c("divides", "flowlines", "network", "nexus"),
+  weights = list(),
   subset_type = c("reference"),
   version = c("2.2")
 ) {
@@ -181,16 +194,13 @@ function(
     xy = list(xy = parse_xy(identifier))
   )
 
-  tmp <- tempfile(fileext = ".gpkg")
-  on.exit({ unlink(tmp) })
-
   call_args$type <- subset_type
   call_args$hf_version <- version
   call_args$lyrs <- layer
 
   tryCatch({
     result <- new.env()
-    get_subset(call_args, result)
+    get_subset(call_args, result, weight_args = weights)
     logger::log_success(
       "retrieved subset of size {size}, cache: {cache}",
       .topenv = result

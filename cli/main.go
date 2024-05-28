@@ -79,6 +79,7 @@ type SubsetRequest struct {
 	IdType     *string
 	Layers     []string
 	SubsetType *string
+	Weights    []string
 	Version    *string
 	Output     *string
 }
@@ -125,6 +126,12 @@ func createSubsetEndpointUrl(endpoint string, opts *SubsetRequest) (*url.URL, er
 
 	if opts.SubsetType != nil {
 		params.Add("subset_type", *opts.SubsetType)
+	}
+
+	if opts.Weights != nil {
+		for _, weight := range opts.Weights {
+			params.Add("weights", weight)
+		}
 	}
 
 	if opts.Version != nil {
@@ -210,6 +217,7 @@ func main() {
 	flag.BoolVar(&verify, "verify", true, "Verify that endpoint is available")
 	flag.BoolVar(&dryRun, "dryrun", false, "Perform a dry run, only outputting the request that will be sent")
 	layers := flag.String("l", "divides,flowlines,network,nexus", "Comma-delimited list of layers to subset.")
+	weights := flag.String("w", "", "Comma-delimited list of weights to generate over the subset.")
 	flag.Parse()
 
 	if len(flag.Args()) == 0 {
@@ -218,6 +226,7 @@ func main() {
 	}
 
 	opts.Layers = append(opts.Layers, strings.Split(*layers, ",")...)
+	opts.Weights = append(opts.Weights, strings.Split(*weights, ",")...)
 
 	args := flag.Args()
 	for _, arg := range args {
