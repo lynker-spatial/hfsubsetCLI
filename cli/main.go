@@ -210,7 +210,7 @@ func main() {
 	opts := SubsetRequest{}
 	opts.IdType = flag.String("t", "hf", `One of: "hf", "comid", "hl", "poi", "nldi", or "xy"`)
 	opts.SubsetType = flag.String("s", "reference", `Hydrofabric type, only "reference" is supported`)
-	opts.Version = flag.String("v", "2.2", "Hydrofabric version (NOTE: omit the preceeding `v`)")
+	opts.Version = flag.String("v", "2.2", "Hydrofabric version (NOTE: omit the preceeding v)")
 	opts.Output = flag.String("o", "hydrofabric.gpkg", "Output file name")
 	flag.BoolVar(&quiet, "quiet", false, "Disable logging")
 	flag.BoolVar(&debug, "debug", false, "Run in debug mode")
