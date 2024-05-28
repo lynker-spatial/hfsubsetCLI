@@ -122,6 +122,13 @@ resource "aws_lb" "hfsubset_alb" {
     load_balancer_type = "application"
     security_groups = [aws_security_group.hfsubset_sg.id]
     subnets = data.aws_subnets.public.ids
+    enable_deletion_protection = true
+
+    access_logs {
+      enabled = true
+      bucket = "lynker-hydrofabric-logs"
+      prefix = "hfsubset-logs"
+    }
 }
 
 resource "aws_lb_target_group" "hfsubset_tg" {
@@ -253,8 +260,8 @@ resource "aws_ecs_service" "hfsubset_ecs" {
 resource "aws_ecs_task_definition" "hfsubset_task_def" {
     family = "service"
     network_mode = "awsvpc"
-    cpu = 256
-    memory = 1024
+    cpu = 1024
+    memory = 2048
     execution_role_arn = data.aws_iam_role.ecs_task_execution_role.arn
     requires_compatibilities = ["FARGATE"]
     container_definitions = jsonencode([
@@ -278,7 +285,7 @@ resource "aws_ecs_task_definition" "hfsubset_task_def" {
             }
             healthCheck = {
                 retries = 3
-                command = ["CMD-SHELL", "wget --spider http://127.0.0.1:8080/__docs__/ || exit 1"] 
+                command = ["CMD-SHELL", "wget -S --spider http://127.0.0.1:8080/ || exit 1"] 
             }
         }
     ])
