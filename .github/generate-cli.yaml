@@ -14,9 +14,16 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      GO_LDFLAGS: "-s -w"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            LICENSE.md
+            README.md
+            cli
     
       - name: Setup Golang
         uses: actions/setup-go@v4
@@ -26,27 +33,27 @@ jobs:
       - name: Package MacOS executable
         working-directory: ./cli
         run: |
-          GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o hfsubset
-          tar -czvf hfsubset-macos_amd64.tar.gz hfsubset
+          GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="${GO_LDFLAGS}" -o hfsubset
+          tar -czvf hfsubset-macos_amd64.tar.gz hfsubset ../LICENSE.md ../README.md
           rm hfsubset
 
       - name: Package Linux executable
         working-directory: ./cli
         run: |
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o hfsubset
-          tar -czvf hfsubset-linux_amd64.tar.gz hfsubset
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="${GO_LDFLAGS}" -o hfsubset
+          tar -czvf hfsubset-linux_amd64.tar.gz hfsubset ../LICENSE.md ../README.md
           rm hfsubset
   
       - name: Package Windows executable
         working-directory: ./cli
         run: |
-          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o hfsubset.exe
-          zip hfsubset-windows_amd64.zip hfsubset.exe
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="${GO_LDFLAGS}" -o hfsubset.exe
+          zip hfsubset-windows_amd64.zip hfsubset.exe ../LICENSE.md ../README.md
           rm hfsubset.exe
 
       - name: Upload packages
         uses: ncipollo/release-action@v1
         with:
-          tag: hfsubset-${{ inputs.version }}
+          tag: ${{ inputs.version }}
           commit: ${{ github.sha }}
           artifacts: "cli/hfsubset-*"
