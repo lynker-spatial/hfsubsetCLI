@@ -186,7 +186,7 @@ function(
 
   call_args$type <- subset_type
   call_args$hf_version <- version
-  call_args$lyrs <- layers
+  call_args$lyrs <- layer
 
   tryCatch({
     result <- new.env()
