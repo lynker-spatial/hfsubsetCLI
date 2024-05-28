@@ -16,6 +16,11 @@
 # along with hfsubset. If not, see <LICENSE.md> or
 # <https://www.gnu.org/licenses/>.
 
+#* @apiTitle Hydrofabric Subsetter
+#* @apiDescription This is a sample server for a subsetting Cloud Native Hydrofabrics
+#* @apiContact list(name = "hfsubsetCLI API Support", email = "jjohnson@lynker.com")
+#* @apiLicense list(name = "GNU General Public License (GPL-3.0)", url = "https://www.gnu.org/licenses/")
+
 logger::log_formatter(logger::formatter_glue_safe)
 
 mount <- Sys.getenv("HFSUBSET_API_MOUNT", "UNSET")
@@ -54,6 +59,7 @@ subset_cache <- cachem::cache_disk(
   read_fn             = if (.has_qs) qs::qread else readRDS,
   write_fn            = if (.has_qs) qs::qsave else saveRDS
 )
+
 
 #' @keywords internal
 parse_id <- function(identifier) {
@@ -133,7 +139,6 @@ function(req) {
 
 #* Health Check
 #* @head /
-#* @serializer text
 function(req, res) {
   res$setHeader("X-HFSUBSET-API-VERSION", "0.1.0")
   res
@@ -141,10 +146,11 @@ function(req, res) {
 
 
 #* Subset endpoint
-#* @param identifier:[string]
-#* @param identifier_type:string
-#* @param subset_type:string
-#* @param version:string
+#* @param identifier:[string] Unique identifiers associated with `identifer_type`
+#* @param identifier_type:string Type of identifier passed (one of: `hf`, `comid`, `hl`, `poi`, `nldi`, `xy`]
+#* @param layer:[string] Layers to return with a given subset, defaults to: [`divides`, `flowlines`, `network`, `nexus`]
+#* @param subset_type:string Type of hydrofabric to subset (related to `version`)
+#* @param version:string Hydrofabric version to subset
 #* @get /subset
 #* @response 200 GeoPackage subset of the hydrofabric
 #* @response 400 Invalid arguments error
@@ -154,6 +160,7 @@ function(
   res,
   identifier,
   identifier_type,
+  layers = c("divides", "flowlines", "network", "nexus"),
   subset_type = c("reference"),
   version = c("2.2")
 ) {
@@ -175,13 +182,11 @@ function(
   )
 
   tmp <- tempfile(fileext = ".gpkg")
-  on.exit({
-    unlink(tmp)
-  })
+  on.exit({ unlink(tmp) })
 
   call_args$type <- subset_type
   call_args$hf_version <- version
-
+  call_args$lyrs <- layers
 
   tryCatch({
     result <- new.env()

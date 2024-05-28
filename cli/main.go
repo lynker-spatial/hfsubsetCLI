@@ -55,8 +55,15 @@ Examples:
   # Finding data around a coordinate point
   hfsubset -o ./sacramento_flowpaths.gpkg -t xy -121.494400,38.581573
 
+Environment Variables:
+  ${HFSUBSET_ENDPOINT} - Endpoint to use for subsetting, defaults to 'https://www.lynker-spatial.com/hydrofabric/hfsubset/'.
+						 Note: the endpoint must end with a trailing slash.
+
 Details:
   * Finding POI identifiers can be done visually through https://www.lynker-spatial.com/hydrolocations.html
+
+  * When using identifier type 'xy', the coordinates are in OGC:CRS84 order, which is the same reference
+    system as EPSG:4326 (WGS84), but uses longitude-latitude axis order rather than latitude-longitude.
 
   * When using identifier type 'nldi', the identifiers follow the syntax
 
@@ -70,6 +77,7 @@ Options:
 type SubsetRequest struct {
 	Id         []string
 	IdType     *string
+	Layers     []string
 	SubsetType *string
 	Version    *string
 	Output     *string
@@ -79,12 +87,6 @@ var quiet bool = false
 var debug bool = false
 var verify bool = true
 var dryRun bool = false
-
-func logDebug(logger *log.Logger, format string, v ...any) {
-	if debug {
-		logger.Printf("[DEBUG] "+format, v)
-	}
-}
 
 func sendRequest(method string, url string) (*http.Response, error) {
 	req, err := http.NewRequest(method, url, nil)
@@ -108,8 +110,18 @@ func createSubsetEndpointUrl(endpoint string, opts *SubsetRequest) (*url.URL, er
 
 	// Query parameters
 	params := url.Values{}
-	params.Add("identifier", strings.Join(opts.Id, ","))
+
+	for _, id := range opts.Id {
+		params.Add("identifier", id)
+	}
+
 	params.Add("identifier_type", *opts.IdType)
+
+	if opts.Layers != nil && len(opts.Layers) > 0 {
+		for _, layer := range opts.Layers {
+			params.Add("layer", layer)
+		}
+	}
 
 	if opts.SubsetType != nil {
 		params.Add("subset_type", *opts.SubsetType)
@@ -197,12 +209,15 @@ func main() {
 	flag.BoolVar(&debug, "debug", false, "Run in debug mode")
 	flag.BoolVar(&verify, "verify", true, "Verify that endpoint is available")
 	flag.BoolVar(&dryRun, "dryrun", false, "Perform a dry run, only outputting the request that will be sent")
+	layers := flag.String("l", "divides,flowlines,network,nexus", "Comma-delimited list of layers to subset.")
 	flag.Parse()
 
 	if len(flag.Args()) == 0 {
 		flag.Usage()
 		return
 	}
+
+	opts.Layers = append(opts.Layers, strings.Split(*layers, ",")...)
 
 	args := flag.Args()
 	for _, arg := range args {
