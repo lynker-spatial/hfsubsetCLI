@@ -30,18 +30,32 @@ jobs:
         with:
           go-version-file: 'cli/go.mod'
 
-      - name: Package MacOS executable
+      - name: Package MacOS executable (x86_64)
         working-directory: ./cli
         run: |
           GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="${GO_LDFLAGS}" -o hfsubset
           tar -czvf hfsubset-macos_amd64.tar.gz hfsubset ../LICENSE.md ../README.md
           rm hfsubset
 
-      - name: Package Linux executable
+      - name: Package MacOS executable (ARM)
+        working-directory: ./cli
+        run: |
+          GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="${GO_LDFLAGS}" -o hfsubset
+          tar -czvf hfsubset-macos_arm64.tar.gz hfsubset ../LICENSE.md ../README.md
+          rm hfsubset
+
+      - name: Package Linux executable (x86_64)
         working-directory: ./cli
         run: |
           GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="${GO_LDFLAGS}" -o hfsubset
           tar -czvf hfsubset-linux_amd64.tar.gz hfsubset ../LICENSE.md ../README.md
+          rm hfsubset
+
+      - name: Package Linux executable (ARM)
+        working-directory: ./cli
+        run: |
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="${GO_LDFLAGS}" -o hfsubset
+          tar -czvf hfsubset-linux_arm64.tar.gz hfsubset ../LICENSE.md ../README.md
           rm hfsubset
   
       - name: Package Windows executable
