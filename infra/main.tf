@@ -285,7 +285,7 @@ resource "aws_ecs_task_definition" "hfsubset_task_def" {
             }
             healthCheck = {
                 retries = 3
-                command = ["CMD-SHELL", "wget -S --spider http://127.0.0.1:8080/ || exit 1"] 
+                command = ["CMD-SHELL", "curl -I http://127.0.0.1:8080/ || exit 1"] 
             }
         }
     ])

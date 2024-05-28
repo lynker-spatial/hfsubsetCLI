@@ -140,7 +140,7 @@ function(req) {
 #* Health Check
 #* @head /
 function(req, res) {
-  res$setHeader("X-HFSUBSET-API-VERSION", "0.1.0")
+  res$setHeader("X-HFSUBSET-API-VERSION", "1.0.0")
   res
 }
 
