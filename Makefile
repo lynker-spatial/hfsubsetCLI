@@ -13,4 +13,4 @@ ecr: docker
 	docker tag hfsubset:latest $(AWS_ECR_ENDPOINT)/hfsubset:$(GIT_COMMIT)
 	docker push $(AWS_ECR_ENDPOINT)/hfsubset:latest
 	docker push $(AWS_ECR_ENDPOINT)/hfsubset:$(GIT_COMMIT)
-
+	aws ecs update-service --cluster hfsubset_cluster --service hfsubset_service --force-new-deployment --region "us-west-2"
