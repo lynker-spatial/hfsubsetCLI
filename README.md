@@ -18,16 +18,16 @@ Usage:
 Examples:
   hfsubset -o ./divides_nexus.gpkg \
            -r "2.2"                 \
-           -t hl_uri                   \
+           -t hl                   \
            "Gages-06752260"
 
-  hfsubset -o ./poudre.gpkg -t hl_uri "Gages-06752260"
+  hfsubset -o ./poudre.gpkg -t hl "Gages-06752260"
 
   # Using network-linked data index identifiers
   hfsubset -o ./poudre.gpkg -t nldi "nwissite:USGS-08279500"
   
   # Specifying layers and hydrofabric version
-  hfsubset -o ./divides_nexus.gpkg -r "2.2" -t hl_uri "Gages-06752260"
+  hfsubset -o ./divides_nexus.gpkg -r "2.2" -t hl "Gages-06752260"
   
   # Finding data around a coordinate point
   hfsubset -o ./sacramento_flowpaths.gpkg -t xy -121.494400,38.581573
