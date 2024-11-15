@@ -175,8 +175,10 @@ function(
   identifier_type,
   layer = c("divides", "flowlines", "network", "nexus"),
   weights = list(),
+  domain = c("conus"),
   subset_type = c("reference"),
-  version = c("2.2")
+  version = c("2.2"),
+  source = c('s3://lynker-spatial/hydrofabric')
 ) {
   .id_types <- c("hf", "comid", "hl", "poi", "nldi", "xy")
   if (!identifier_type %in% .id_types) {
@@ -195,9 +197,10 @@ function(
     xy = list(xy = parse_xy(identifier))
   )
 
-  call_args$type <- subset_type
-  call_args$hf_version <- version
+  #call_args$type <- subset_type
+  #call_args$hf_version <- version
   call_args$lyrs <- layer
+  call_args$gpkg <- glue('{source}/v{version}/{domain}/{domain}_{subset_type}.gpkg')
 
   tryCatch({
     result <- new.env()
