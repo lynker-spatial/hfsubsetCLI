@@ -276,7 +276,13 @@ resource "aws_ecs_task_definition" "hfsubset_task_def" {
             image = "${data.aws_ecr_image.hfsubset_image.registry_id}.dkr.ecr.us-west-2.amazonaws.com/hfsubset:latest"
             essential = true
             cpu = 0
-            mountPoints = []
+            mountPoints = [
+                {
+                    sourceVolume = "hfsubset-efs"
+                    containerPath = "/efs"
+                    readOnly = false
+                }
+            ]
             systemControls = []
             volumesFrom = []
             portMappings = [{
@@ -300,7 +306,51 @@ resource "aws_ecs_task_definition" "hfsubset_task_def" {
         }
     ])
 
+    # EFS volume
+    volume {
+      name = "hfsubset-efs"
+      efs_volume_configuration {
+        file_system_id = aws_efs_file_system.hfsubset_efs.id
+        root_directory = "/"
+      }
+    }
+
     tags = {
       Owner = "Lynker Spatial"
     }
+}
+
+// ============================================================================
+// EFS ========================================================================
+// ============================================================================
+
+variable "efs_creation_token" {
+  description = "The creation token for the EFS file system"
+  type        = string
+  default    = "hfsubset-efs"
+}
+
+# EFS File system
+resource "aws_efs_file_system" "hfsubset_efs" {
+  creation_token = var.efs_creation_token
+  encrypted      = true
+
+  tags = {
+    Name = "hfsubset-efs"
+    Owner = "Lynker Spatial"
+  }
+}
+
+# EFS Mount Target
+resource "aws_efs_mount_target" "hfsubset_efs_mount_target" {
+  count = length(data.aws_subnet.private.ids)
+
+  file_system_id = aws_efs_file_system.hfsubset_efs.id
+  subnet_id      = data.aws_subnet.private.ids[count.index]
+}
+
+
+# EFS Access Point (not sure if we need this)
+resource "aws_efs_access_point" "efs_access_point" {
+  file_system_id = aws_efs_file_system.hfsubset_efs.id
 }
