@@ -23,6 +23,8 @@
 #* @apiVersion 1.1.0
 
 logger::log_formatter(logger::formatter_glue_safe)
+efs_dir <- Sys.getenv("EFS_PATH", "UNSET")
+
 
 cache_dir <- Sys.getenv("HFSUBSET_API_CACHE_DIR", "UNSET")
 if (cache_dir == "UNSET") {
@@ -160,7 +162,7 @@ function(req, res) {
 #* Subset endpoint
 #* @param identifier:[string] Unique identifiers associated with `identifer_type`
 #* @param identifier_type:string Type of identifier passed (one of: `hf`, `comid`, `hl`, `poi`, `nldi`, `xy`]
-#* @param layer:[string] Layers to return with a given subset, defaults to: [`divides`, `flowlines`, `network`, `nexus`]
+#* @param layer:[string] Layers to return with a given subset, defaults to: [`divides`, `flowpaths`, `network`, `nexus`]
 #* @param subset_type:string Type of hydrofabric to subset (related to `version`)
 #* @param weights:[string] Forcing weights to generate (any of: `medium_range`)
 #* @param version:string Hydrofabric version to subset
@@ -173,13 +175,15 @@ function(
   res,
   identifier,
   identifier_type,
-  layer = c("divides", "flowlines", "network", "nexus"),
+  layer = c("divides", "flowpaths", "network", "nexus"),
   weights = list(),
   domain = c("conus"),
   subset_type = c("reference"),
   version = c("2.2"),
-  source = c('s3://lynker-spatial/hydrofabric')
 ) {
+
+  source_path = ifelse(efs_dir == "UNSET", 's3://lynker-spatial/hydrofabric', efs_dir)
+
   .id_types <- c("hf", "comid", "hl", "poi", "nldi", "xy")
   if (!identifier_type %in% .id_types) {
     .types <- paste0(.id_types, collapse = ", ")
@@ -200,7 +204,7 @@ function(
   #call_args$type <- subset_type
   #call_args$hf_version <- version
   call_args$lyrs <- layer
-  call_args$gpkg <- glue('{source}/v{version}/{domain}/{domain}_{subset_type}.gpkg')
+  call_args$gpkg <- glue::glue('{source_path}/v{version}/{domain}/{domain}_{subset_type}.gpkg')
 
   tryCatch({
     result <- new.env()

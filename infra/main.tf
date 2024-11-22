@@ -292,7 +292,9 @@ resource "aws_ecs_task_definition" "hfsubset_task_def" {
             }]
             environment = [
                 { name = "HFSUBSET_API_HOST", value = "0.0.0.0" },
-                { name = "HFSUBSET_API_PORT", value = "8080" }
+                { name = "HFSUBSET_API_PORT", value = "8080" },
+                { name = "EFS_PATH", value = "/efs"}
+                
             ]
             logConfiguration = {
                 logDriver = "awslogs"
