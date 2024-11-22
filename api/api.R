@@ -22,6 +22,8 @@
 #* @apiLicense list(name = "GNU General Public License (GPL-3.0)", url = "https://www.gnu.org/licenses/")
 #* @apiVersion 1.1.0
 
+future::plan(future::multisession)
+
 logger::log_formatter(logger::formatter_glue_safe)
 efs_dir <- Sys.getenv("EFS_PATH", "UNSET")
 
@@ -154,7 +156,7 @@ function(req) {
 #* Health Check
 #* @head /health
 function(req, res) {
-  res$setHeader("X-HFSUBSET-API-VERSION", "1.1.0")
+  res$setHeader("X-HFSUBSET-API-VERSION", "1.1.1")
   res
 }
 
@@ -206,22 +208,24 @@ function(
   call_args$lyrs <- layer
   call_args$gpkg <- glue::glue('{source_path}/v{version}/{domain}/{domain}_{subset_type}.gpkg')
 
-  tryCatch({
-    result <- new.env()
-    get_subset(call_args, result, weight_args = weights)
-    logger::log_success(
-      "retrieved subset of size {size}, cache: {cache}",
-      .topenv = result
-    )
+  promises::future_promise({
+    tryCatch({
+      result <- new.env()
+      get_subset(call_args, result, weight_args = weights)
+      logger::log_success(
+        "retrieved subset of size {size}, cache: {cache}",
+        .topenv = result
+      )
 
-    res$setHeader("Content-Length", result$size)
-    res$setHeader("Content-Type", "application/geopackage+vnd.sqlite3")
-    res$setHeader("Content-Disposition", "attachment; filename=\"subset.gpkg\"")
-    res$setHeader("X-HFSUBSET-API-CACHE", result$cache)
-    res$body <- result$data
-    res
-  }, error = \(cnd) {
-    logger::log_error("failed to subset hydrofabric: {msg}", msg = cnd$message)
-    rlang::abort("failed to subset hydrofabric", class = "error_500")
+      res$setHeader("Content-Length", result$size)
+      res$setHeader("Content-Type", "application/geopackage+vnd.sqlite3")
+      res$setHeader("Content-Disposition", "attachment; filename=\"subset.gpkg\"")
+      res$setHeader("X-HFSUBSET-API-CACHE", result$cache)
+      res$body <- result$data
+      res
+    }, error = \(cnd) {
+      logger::log_error("failed to subset hydrofabric: {msg}", msg = cnd$message)
+      rlang::abort("failed to subset hydrofabric", class = "error_500")
+    })
   })
 }

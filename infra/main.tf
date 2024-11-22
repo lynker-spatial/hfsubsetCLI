@@ -294,7 +294,9 @@ resource "aws_ecs_task_definition" "hfsubset_task_def" {
                 { name = "HFSUBSET_API_HOST", value = "0.0.0.0" },
                 { name = "HFSUBSET_API_PORT", value = "8080" },
                 { name = "EFS_PATH", value = "/efs"}
-                
+                { name = "AWS_NO_SIGN_REQUEST", value = "YES" },
+                { name = "AWS_REGION", value = "us-west-2" },
+                { name = "AWS_DEFAULT_REGION", value = "us-west-2" }
             ]
             logConfiguration = {
                 logDriver = "awslogs"
