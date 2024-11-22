@@ -349,8 +349,118 @@ resource "aws_efs_mount_target" "hfsubset_efs_mount_target" {
   subnet_id      = data.aws_subnet.private.ids[count.index]
 }
 
-
 # EFS Access Point (not sure if we need this)
 resource "aws_efs_access_point" "efs_access_point" {
   file_system_id = aws_efs_file_system.hfsubset_efs.id
+}
+
+variable "lynker_spatial_s3_bucket_name" {
+  description = "The name of the S3 bucket to use for the DataSync task"
+  type        = string
+  default     = "lynker-spatial"
+}
+
+// ============================================================================
+// Lynker Spatial S3 Bucket  ========================================================================
+// ============================================================================
+data "aws_s3_bucket" "lynker_spatial_s3_bucket" {
+    bucket = var.lynker_spatial_s3_bucket_name
+}
+
+// ============================================================================
+// DataSync ========================================================================
+// ============================================================================
+
+resource "aws_datasync_location_efs" "datasync_efs_location" {
+  efs_file_system_arn = aws_efs_mount_target.hfsubset_efs_mount_target.file_system_arn
+
+  ec2_config {
+    security_group_arns = [aws_security_group.hfsubset_sg.arn]
+    subnet_arn          = data.aws_subnet.private.ids[0]
+  }
+}
+
+resource "aws_iam_role" "example" {
+  name = "hfsubset-s3-to-efs-datasync-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "datasync.amazonaws.com",
+        },
+        Action = "sts:AssumeRole",
+      },
+    ],
+  })
+}
+
+# IAM policy document for the DataSync role
+data "aws_iam_policy_document" "datasync_policy_document" {
+  statement {
+    actions = [
+    "s3:GetObject",
+    "s3:ListBucket",
+    "s3:GetBucketLocation",
+    "s3:GetObjectTagging",
+    "s3:ListObjectV2",
+    "s3:CopyObject",
+    "elasticfilesystem:DescribeFileSystems",
+    "elasticfilesystem:DescribeFileSystemPolicy",
+    "elasticfilesystem:ClientMount",
+    "elasticfilesystem:ClientWrite",
+    "elasticfilesystem:ClientRootAccess"
+    ]
+
+    resources = [
+      data.aws_s3_bucket.lynker_spatial_s3_bucket.arn,
+      "${data.aws_s3_bucket.lynker_spatial_s3_bucket.arn}/*",
+    ]
+  }
+}
+
+
+
+resource "aws_datasync_location_s3" "datasync_s3_location" {
+  s3_bucket_arn = data.aws_s3_bucket.lynker_spatial_s3_bucket.arn
+  subdirectory  = "/hydrofabric"
+
+  s3_config {
+    bucket_access_role_arn = aws_iam_role.example.arn
+  }
+}
+
+// ============================================================================
+// DataSync variables for filtering ========================================================================
+// ============================================================================
+
+variable "datasync_bucket_filter_v2_2" {
+  description = "DataSync bucket filter string for version v2.2"
+  type        = string
+  default     = "/v2.2/ak/ak_nextgen.gpkg|/v2.2/ak/ak_reference.gpkg|/v2.2/conus/conus_nextgen.gpkg|/v2.2/conus/conus_reference.gpkg|/v2.2/gl/gl_nextgen.gpkg|/v2.2/gl/gl_reference.gpkg|/v2.2/hi/hi_nextgen.gpkg|/v2.2/hi/hi_reference.gpkg|/v2.2/prvi/prvi_nextgen.gpkg|/v2.2/prvi/prvi_reference.gpkg"
+}
+
+variable "datasync_bucket_filter_v3_0" {
+  description = "DataSync bucket filter string for version v3.0"
+  type        = string
+  default     = ""
+#   default     = "/v3.0/ak/ak_nextgen.gpkg|/v3.0/ak/ak_reference.gpkg|/v3.0/conus/conus_nextgen.gpkg|/v3.0/conus/conus_reference.gpkg|/v3.0/gl/gl_nextgen.gpkg|/v3.0/gl/gl_reference.gpkg|/v3.0/hi/hi_nextgen.gpkg|/v3.0/hi/hi_reference.gpkg|/v3.0/prvi/prvi_nextgen.gpkg|/v3.0/prvi/prvi_reference.gpkg"
+}
+
+// ============================================================================
+// DataSync Task S3 --> EFS ========================================================================
+// ============================================================================
+resource "aws_datasync_task" "datasync_s3_to_efs_task" {
+  destination_location_arn = aws_datasync_location_efs.datasync_efs_location.arn 
+  name                     = "datasync-s3-to-efs-task"
+  source_location_arn      = data.aws_datasync_location_s3.source.arn 
+
+  includes {
+    filter_type = "SIMPLE_PATTERN"
+    # concatonate the datasync_bucket_filter_v2_2 and datasync_bucket_filter_v3_0
+    value       = "${var.datasync_bucket_filter_v2_2}|${var.datasync_bucket_filter_v3_0}"
+    # value       = "/v2.2/ak/ak_nextgen.gpkg|/v2.2/ak/ak_reference.gpkg|/v2.2/conus/conus_nextgen.gpkg|/v2.2/conus/conus_reference.gpkg|/v2.2/gl/gl_nextgen.gpkg|/v2.2/gl/gl_reference.gpkg|/v2.2/hi/hi_nextgen.gpkg|/v2.2/hi/hi_reference.gpkg|/v2.2/prvi/prvi_nextgen.gpkg|/v2.2/prvi/prvi_reference.gpkg"
+  }
+
 }
