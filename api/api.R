@@ -20,13 +20,13 @@
 #* @apiDescription This is a REST API for subsetting cloud-native hydrofabrics.
 #* @apiContact list(name = "hfsubsetCLI API Support", email = "jjohnson@lynker.com")
 #* @apiLicense list(name = "GNU General Public License (GPL-3.0)", url = "https://www.gnu.org/licenses/")
-#* @apiVersion 1.1.0
+#* @apiVersion 1.2.0
 
 future::plan(future::multisession)
 
 logger::log_formatter(logger::formatter_glue_safe)
-efs_dir <- Sys.getenv("EFS_PATH", "UNSET")
 
+efs_dir <- Sys.getenv("EFS_PATH", "UNSET")
 
 cache_dir <- Sys.getenv("HFSUBSET_API_CACHE_DIR", "UNSET")
 if (cache_dir == "UNSET") {
@@ -165,8 +165,9 @@ function(req, res) {
 #* @param identifier:[string] Unique identifiers associated with `identifer_type`
 #* @param identifier_type:string Type of identifier passed (one of: `hf`, `comid`, `hl`, `poi`, `nldi`, `xy`]
 #* @param layer:[string] Layers to return with a given subset, defaults to: [`divides`, `flowpaths`, `network`, `nexus`]
-#* @param subset_type:string Type of hydrofabric to subset (related to `version`)
 #* @param weights:[string] Forcing weights to generate (any of: `medium_range`)
+#* @param domain:string Domain hydrofabric to subset, defaults to: `conus`
+#* @param subset_type:string Type of hydrofabric to subset (related to `version`)
 #* @param version:string Hydrofabric version to subset
 #* @get /subset
 #* @response 200 GeoPackage subset of the hydrofabric
@@ -181,10 +182,10 @@ function(
   weights = list(),
   domain = c("conus"),
   subset_type = c("reference"),
-  version = c("2.2"),
+  version = c("2.2")
 ) {
 
-  source_path = ifelse(efs_dir == "UNSET", 's3://lynker-spatial/hydrofabric', efs_dir)
+  source_path = ifelse(efs_dir == "UNSET", '/vsis3/lynker-spatial/hydrofabric', efs_dir)
 
   .id_types <- c("hf", "comid", "hl", "poi", "nldi", "xy")
   if (!identifier_type %in% .id_types) {
@@ -224,8 +225,10 @@ function(
       res$body <- result$data
       res
     }, error = \(cnd) {
-      logger::log_error("failed to subset hydrofabric: {msg}", msg = cnd$message)
-      rlang::abort("failed to subset hydrofabric", class = "error_500")
+      rlang::abort(
+        glue::glue("failed to subset hydrofabric {cnd$message}"),
+        class = "error_500"
+      )
     })
   })
 }

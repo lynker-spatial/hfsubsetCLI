@@ -39,16 +39,26 @@ error_handler <- function(req, res, err) {
   }, error_500 = \(cnd) {
     res$status <- 500
     list(error = "Service failed to process user request",
-         message = rlang::cnd_message(cnd))
+         message = "internal server error. Please file an issue at https://github.com/lynker-spatial/hfsubsetCLI with your request.")
   }, error = \(cnd) {
     res$status <- 500
     msg <- rlang::cnd_message(cnd)
+    print(cnd)
     logger::log_error("Unhandled internal error: {msg}")
     list(error = "Internal Server Error")
   })
 }
 
 logger::log_info("Listening for requests on ", paste0(host, ":", port))
+
+efs_dir <- Sys.getenv("EFS_PATH", "UNSET")
+if (efs_dir != "UNSET") {
+  logger::log_info(
+    "Using EFS directory ", efs_dir,
+    " with dirs: ", paste0(list.files(efs_dir), collapse = "; ")
+  )
+}
+
 
 tryCatch({
   plumber::pr("api.R") |>
